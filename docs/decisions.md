@@ -53,6 +53,30 @@ Builds are signed in gloob with the Apple developer account Xcode there is signe
 (decided 2026-10-28). No other Apple credentials go into gloob. Details:
 [build-on-gloob.md](build-on-gloob.md).
 
+## Undo restores only the deleted text
+
+When backspace undoes an expansion of a `word: true` trigger, the keyboard puts back only
+the characters it deleted (decided by the owner, 2026-10-28). Espanso on the Mac also
+types the separator before the trigger again, which then appears twice ("ok brb " →
+backspace → "ok  brb "). This is a deliberate difference from Espanso.
+
+## Several snippets with the same trigger
+
+Espanso asks which one to use; the keyboard takes the first in load order (accepted by the
+owner, 2026-10-28). A picker can come with the choice panel (plan step 6).
+
+## Stop runaway scripts
+
+Scripts that run past the time limit are stopped with JavaScriptCore's
+`JSContextGroupSetExecutionTimeLimit` (decided by the owner, 2026-10-28). It is exported by
+JavaScriptCore but not declared in its public headers, so the keyboard looks it up at run
+time and still works without it, only without stopping the script.
+
+- **Why:** otherwise a script that never ends keeps a CPU core busy until iOS stops the
+  keyboard.
+- **Cost:** non-public API, acceptable as there is no App Store release. Apple could change
+  or remove it in any iOS update.
+
 ## No App Store release
 
 GPL-3.0 and App Store terms conflict. Builds are installed on the owner's own devices

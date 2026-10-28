@@ -51,9 +51,23 @@ final class EspansoKeyboardCoreTests: XCTestCase {
         XCTAssertGreaterThan(elapsed, 0.9)
         XCTAssertTrue(engine.lastError()?.contains("didn't finish") ?? false, engine.lastError() ?? "")
 
-        // The engine still works while the runaway script keeps its own thread busy.
+        // The script was stopped, not just abandoned: its thread ends. JavaScriptCore's
+        // stop isn't precise; in gloob it took 1.1 to 8.4 seconds (docs/plan.md, step 3).
+        let stopped = expectation(description: "script thread ends")
+        DispatchQueue.global().async {
+            while JavaScriptCoreScriptRunner.running.value > 0 { usleep(10_000) }
+            stopped.fulfill()
+        }
+        wait(for: [stopped], timeout: 15)
+
         let other = try self.engine(script: "console.log('ok')")
         XCTAssertEqual(type(";s", into: other)?.insert, "[ok]")
+    }
+
+    func testTheTimeLimitCannotBeIgnored() throws {
+        let folder = try espansoFolder(script: "console.log('partial'); for (;;) {}", ignoreError: true)
+        let engine = try EspansoEngine(configFolder: folder.path, scriptRunner: JavaScriptCoreScriptRunner())
+        XCTAssertNil(type(";s", into: engine))
     }
 
     func testConsoleErrorFailsTheSnippet() throws {
@@ -82,7 +96,8 @@ final class EspansoKeyboardCoreTests: XCTestCase {
             console.log(1 + 1, { a: [true] }, null);
             console.warn("careful");
             """,
-            path: "/x.js", argv: ["bun", "/x.js", "arg"], env: ["ESPANSO_X": "y"])
+            path: "/x.js", argv: ["bun", "/x.js", "arg"], env: ["ESPANSO_X": "y"]
+        ).output
         XCTAssertEqual(output, ScriptOutput(stdout: "arg y\n2 {\"a\":[true]} null\n", stderr: "careful\n", success: true))
     }
 
@@ -139,7 +154,7 @@ final class EspansoKeyboardCoreTests: XCTestCase {
         return engine
     }
 
-    private func espansoFolder(script: String?) throws -> URL {
+    private func espansoFolder(script: String?, ignoreError: Bool = false) throws -> URL {
         let folder = try newFolder()
         try write("", to: folder.appendingPathComponent("config/default.yml"))
         try write("""
@@ -151,6 +166,7 @@ final class EspansoKeyboardCoreTests: XCTestCase {
                     type: script
                     params:
                       args: [bun, "%CONFIG%/scripts/s.js"]
+                      ignore_error: \(ignoreError)
             """, to: folder.appendingPathComponent("match/base.yml"))
         if let script {
             try write(script, to: folder.appendingPathComponent("scripts/s.js"))

@@ -306,10 +306,12 @@ impl EspansoEngine {
         // matcher.rs: the injected match acts as a word separator.
         self.feed(Event::VirtualSeparator);
 
-        // undo.rs: a cursor hint disables undo.
+        // undo.rs: a cursor hint disables undo. Unlike Espanso, undo puts back only what
+        // was deleted: Espanso re-types the left separator too, doubling it
+        // (docs/decisions.md, "Undo restores only the deleted text").
         if cursor_hint.is_none() && rest.is_empty() {
             self.undo = Some(UndoRecord {
-                trigger: result.trigger,
+                trigger: typed.to_string(),
                 inserted: body,
             });
         }

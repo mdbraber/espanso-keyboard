@@ -69,6 +69,9 @@ These are for whoever builds the keyboard side (plan step 3):
   the `ESPANSO_<NAME>` form (`espanso-render/src/extension/util.rs`).
 - `console.log` is captured as the output and `console.error` as the error output, matching
   standard output and standard error under Bun.
-- Time limit: about one second. JavaScriptCore has no public way to stop a running script,
-  so the keyboard stops waiting rather than stopping the script. Run each script in its own
-  `JSContext` on a background queue so a runaway script can't block typing.
+- Time limit: about one second. Run each script in its own `JSContext` on its own thread
+  so a runaway script can't block typing: after the time limit the keyboard stops waiting
+  and the snippet fails, even with `ignore_error`. The script itself is stopped with
+  JavaScriptCore's non-public `JSContextGroupSetExecutionTimeLimit`
+  ([decisions.md](decisions.md), "Stop runaway scripts"); that stop isn't precise and can
+  come several seconds later.

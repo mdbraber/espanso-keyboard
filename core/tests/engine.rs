@@ -107,14 +107,20 @@ fn backspace_does_not_undo_a_cursor_hint_expansion() {
 }
 
 #[test]
-fn undo_of_a_word_trigger_puts_back_the_whole_trigger() {
-    // Espanso's undo re-types the matched trigger including its left separator, which
-    // stayed in the text, so the separator appears twice (action.rs, Undo). Kept to
-    // match Espanso on the Mac.
+fn undo_of_a_word_trigger_keeps_the_left_separator_single() {
+    // Espanso on the Mac re-types the left separator as well, giving "ok  brb "
+    // (action.rs, Undo); the keyboard puts back only what it deleted (docs/decisions.md).
     let mut field = Field::new();
     field.type_keys("ok brb ");
     field.backspace();
-    assert_eq!(field.text(), "ok  brb |");
+    assert_eq!(field.text(), "ok brb |");
+    assert_eq!(field.expansions[1].insert, "brb ");
+
+    // At the start of the text there is no left separator.
+    let mut field = Field::new();
+    field.type_keys("brb.");
+    field.backspace();
+    assert_eq!(field.text(), "brb.|");
 }
 
 #[test]

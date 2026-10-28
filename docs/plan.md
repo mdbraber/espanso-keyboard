@@ -105,16 +105,15 @@ How it follows Espanso, and where it differs:
 - `type` is named `type_text` in Rust (`type` is a keyword); the Swift name can be set in
   step 3.
 
-Open questions:
+Questions raised, and how they were settled:
 
-- **Undo of a `word: true` trigger doubles the left separator**, on the Mac too: Espanso
-  keeps the separator before the trigger when expanding, but types it again on undo
-  (`espanso-engine/src/process/middleware/action.rs`). "ok brb " → "ok be right back " →
-  backspace → "ok  brb ". The keyboard copies this to match the Mac; the test
-  `undo_of_a_word_trigger_puts_back_the_whole_trigger` records it. Fix in both or keep?
-- **Several snippets with the same trigger**: Espanso asks which one; the keyboard takes
-  the first. A picker could come with the choice panel in step 6.
-- **Cursor offset units**: `adjustTextPosition(byCharacterOffset:)` may count UTF-16
+- **Undo of a `word: true` trigger doubled the left separator**, as Espanso does on the
+  Mac (`espanso-engine/src/process/middleware/action.rs`). Fixed in the keyboard only, on
+  the owner's decision; see [decisions.md](decisions.md). Test:
+  `undo_of_a_word_trigger_keeps_the_left_separator_single`.
+- **Several snippets with the same trigger**: the keyboard takes the first; accepted by the
+  owner (decisions.md).
+- **Cursor offset units** (open): `adjustTextPosition(byCharacterOffset:)` may count UTF-16
   units rather than grapheme clusters. Check in step 4 with an emoji after `$|$`.
 
 ## Step 2: Script variables in Rust
@@ -187,7 +186,7 @@ file. If memory after loading is above about 30 MB, stop and discuss before step
   into `swift/EspansoKeyboardCore/`. Both are ignored by git, so run the script before
   building the package. `scripts/test-swift.sh` runs it and then the Swift tests.
 - `swift/EspansoKeyboardCore/` (Swift 6, iOS 17) has `JavaScriptCoreScriptRunner` and
-  8 tests, run in the iPhone 18 Pro Simulator: `;jitsi` gives a new 10-character room each
+  its tests, run in the iPhone 18 Pro Simulator: `;jitsi` gives a new 10-character room each
   time; earlier variables reach the script; an endless loop fails the snippet after
   1.0 seconds and a second engine still works meanwhile; `console.error`, a thrown error
   and a missing file fail the snippet; `console` output matches Bun's for the cases in
@@ -201,10 +200,16 @@ file. If memory after loading is above about 30 MB, stop and discuss before step
   3.9 MB for JavaScriptCore; 20 more runs add 0.2 MB. Well under 30 MB. The owner's real
   folder isn't in gloob: copy it to a temporary folder outside the repository and pass
   it to the memory test, or measure on the iPhone in step 4.
-- A script that never ends keeps running on its thread after the snippet fails, using a
-  CPU core until the keyboard is stopped. JavaScriptCore's private
-  `JSContextGroupSetExecutionTimeLimit` could stop it; that needs the owner's agreement
-  as it changes the decision recorded in script-contract.md.
+- Runaway scripts are stopped with JavaScriptCore's non-public
+  `JSContextGroupSetExecutionTimeLimit` (owner's decision, see decisions.md); before that,
+  a script that never ended kept a CPU core busy until the keyboard was stopped. The
+  runner still stops waiting after 1 second, so typing is never held longer, but the stop
+  itself isn't precise. Measured in gloob's Simulator with a 1-second limit, five runs
+  each, one at a time: `for (;;) {}` 7.1 s the first time, then 1.1 s; a loop doing
+  `i++` 1.1–1.2 s; a loop building strings 5.6–8.4 s, probably because garbage collection
+  time doesn't count. Every run was stopped. Test: `testARunawayScriptFailsWithinAboutASecond`
+  checks the script's thread ends, and `testTheTimeLimitCannotBeIgnored` that
+  `ignore_error` doesn't keep a timed-out script's output. 9 Swift tests in total.
 
 ## Step 4: Keyboard
 
