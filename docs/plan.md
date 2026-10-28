@@ -259,9 +259,10 @@ typing and autocorrect feel unchanged.
   The signed device build (`xcodebuild … -configuration Release -destination
   'generic/platform=iOS' -allowProvisioningUpdates build`) registered them through Xcode's
   account; both targets got team provisioning profiles, 18 MB app.
-- Next (item 3): the owner installs it from the Mac
-  (`xcrun devicectl device install app --device <iPhone> Hex.app`) and types with it for
-  a day, including Dutch.
+- Installed on the owner's iPhone (iOS 27.0) directly from gloob with
+  `xcrun devicectl device install app`; the iPhone is paired with Xcode in gloob over the
+  local network, contrary to what build-on-gloob.md said (now corrected).
+- Next (item 3): the owner types with it for a day, including Dutch.
 
 ## Step 5: Companion app import
 

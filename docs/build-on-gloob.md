@@ -12,7 +12,7 @@ agents run. It was built from `ghcr.io/cirruslabs/macos-golden-gate-xcode:27.1`
 | UniFFI bindings, XCFramework | Yes | Local tools |
 | Xcode builds for the iPhone Simulator, Simulator tests | Yes | Confirmed in step 0: an app builds, installs and launches with `xcrun simctl`. The first boot of a Simulator device takes about 1.5 minutes |
 | Installing on the owner's iPhone over USB | No | gloob has no USB passthrough |
-| Installing or debugging over Wi-Fi | No | The Mac's packet filter blocks gloob from the local network and the tailnet |
+| Installing on the owner's iPhone over the network | Yes | Confirmed 2026-10-28: the iPhone is paired with Xcode in gloob and connects over the local network (`xcrun devicectl list devices`). Debugging over the network not tried yet |
 | Signing for a real device | Yes | Xcode in gloob is signed in to the owner's Apple developer account |
 
 ## Signing
@@ -31,8 +31,18 @@ Accounts), `APP_BUNDLE_ID` and `APP_GROUP_ID`.
 
 ## Getting a signed build onto the iPhone
 
-gloob can't reach the iPhone, so a signed build gets there in one of two ways. Use the
-first until there's a reason to set up the second.
+Install from gloob. The iPhone is paired with Xcode in gloob and reachable over the local
+network:
+
+```sh
+xcrun devicectl list devices    # the iPhone shows as "connected", "physical"
+xcrun devicectl device install app --device <iPhone UDID> \
+  build/app-device/Build/Products/Release-iphoneos/Hex.app
+```
+
+The device's UDID stays out of committed files, like the other identifiers.
+
+Other ways, if gloob loses the connection:
 
 1. **Install from the Mac.** gloob builds a signed `.app` for the device. The owner copies
    it to the Mac (for example with `scp` from the Mac, which can reach gloob) and installs
@@ -113,6 +123,6 @@ bun fixtures/espanso/scripts/jitsi.js 10
 
 ## Network
 
-gloob reaches the internet (GitHub, crates.io, Homebrew, Apple) but not the local network
-or the tailnet. Nothing in this project needs local network access, except installing on
-the iPhone, which happens on the Mac as described above.
+gloob reaches the internet (GitHub, crates.io, Homebrew, Apple). It also reaches the
+owner's iPhone over the local network for installing builds (checked 2026-10-28), although
+this document first said the Mac's packet filter blocks the local network.
