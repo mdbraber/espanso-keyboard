@@ -3,6 +3,8 @@ import KeyboardCore
 
 open class HexKeyboardViewController: UIInputViewController {
     open var hapticsEnabled: Bool { hasFullAccess && engine.settings.haptics }
+    /// Snippet expansion, if the app provides one (espanso-keyboard). Set before `viewDidLoad`.
+    public var expander: TextExpander?
 
     private let keyboardView = KeyboardView()
     private var dictation = Dictation.Status()
@@ -55,11 +57,13 @@ open class HexKeyboardViewController: UIInputViewController {
         suggestionBar.onSelect = { [unowned self] in
             feedback(.input)
             engine.accept($0, in: document)
+            expander?.reset()
             render()
         }
         suggestionBar.onEmoji = { [unowned self] in
             feedback(.input)
             engine.accept(emoji: $0, in: document)
+            expander?.reset()
             render()
         }
         engine.corrector = Corrector(source: Lexicon.english, phrases: .english)
@@ -105,6 +109,7 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.suggestionsChanged()
         keyboardView.characterPreview = engine.settings.characterPreview
         if hasFullAccess { sources.reload() }
+        expander?.reset()
         syncWithDocument()
     }
 
@@ -146,7 +151,10 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.update(InputTraits(textDocumentProxy))
         let known = engine.text.before.count
         let report = engine.documentChanged(document)
-        if report == .changed { tellSources(.app) }
+        if report == .changed {
+            tellSources(.app)
+            expander?.reset()
+        }
         TouchTrace.shared.record(report, host: textDocumentProxy.documentContextBeforeInput?.count ?? 0, known: known)
         render()
     }
@@ -247,7 +255,56 @@ open class HexKeyboardViewController: UIInputViewController {
         default:
             break
         }
+        let before = engine.text.before
+        if case .down(let key, _) = event, key.action == .delete, let undo = expander?.backspace() {
+            return apply(undo)
+        }
         if engine.handle(event, in: document) { render() }
+        followEdit(from: before, by: Edit(event))
+    }
+
+    /// What a keyboard event did to the text, for the expander.
+    private enum Edit {
+        case typing, deleting, other
+
+        init(_ event: KeyboardEvent) {
+            switch event {
+            case .type, .slide, .trigger: self = .typing
+            case .down(let key, _) where key.action == .delete: self = .deleting
+            default: self = .other
+            }
+        }
+    }
+
+    /// Tells the expander how the keyboard's edit changed the text before the caret. Text added at the caret is typing;
+    /// a single character deleted is the backspace it already knows of. When the edit also replaced earlier text
+    /// (autocorrect, a smart dash), the trigger in progress no longer matches the field, so the expander starts over
+    /// from the added text.
+    private func followEdit(from old: String, by edit: Edit) {
+        guard let expander else { return }
+        let new = engine.text.before
+        guard new != old else { return }
+        switch edit {
+        case .other:
+            expander.reset()
+        case .deleting:
+            if !(new.count == old.count - 1 && old.hasPrefix(new)) { expander.reset() }
+        case .typing:
+            let kept = zip(old, new).prefix { $0 == $1 }.count
+            if kept < old.count { expander.reset() }
+            if let expansion = expander.typed(String(new.dropFirst(kept))) { apply(expansion) }
+        }
+    }
+
+    /// Applies an expansion through the engine, so its copy of the text stays the field's. A delete reaching past the
+    /// text the keyboard knows can't be checked, so the expansion is dropped.
+    private func apply(_ expansion: TextExpansion) {
+        guard expansion.deleteCount <= engine.text.before.count else {
+            expander?.reset()
+            return
+        }
+        engine.replace(expansion.deleteCount, with: expansion.insert, movingBack: expansion.cursorOffset, in: document)
+        render()
     }
 
     /// Stops a dictation in progress, so what was heard is typed. Otherwise starts one: in place while the app keeps the
@@ -298,7 +355,9 @@ open class HexKeyboardViewController: UIInputViewController {
 
     private func startDeleteRepeat() {
         deleteRepeat = DeleteRepeat { [unowned self] words in
+            let before = engine.text.before
             if words { engine.deleteWord(in: document) } else { engine.perform(.delete, in: document) }
+            followEdit(from: before, by: words ? .other : .deleting)
             feedback(words ? .deletionRapid : .deletionRepeat)
             render()
         }

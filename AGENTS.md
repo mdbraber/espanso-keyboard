@@ -39,5 +39,6 @@ The project is built in gloob, a macOS virtual machine; see
 scripts/check-ios.sh                 # core tests, then iPhone and Simulator builds
 cd core && cargo test                # core tests only
 scripts/test-swift.sh                # XCFramework, then Swift tests in the Simulator
+scripts/test-keyboard.sh             # keyboard with snippets, UI tests in the Simulator
 bun fixtures/espanso/scripts/jitsi.js 10
 ```

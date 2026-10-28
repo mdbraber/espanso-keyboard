@@ -18,9 +18,14 @@ settings:
     "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # The Rust core is built for Apple silicon Simulators only (espanso-keyboard).
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 packages:
   HexKeyboard:
     path: Packages/HexKeyboard
+  # The Rust core; run scripts/build-xcframework.sh first (espanso-keyboard).
+  EspansoKeyboardCore:
+    path: ../swift/EspansoKeyboardCore
 targets:
   Hex:
     type: application
@@ -73,10 +78,16 @@ targets:
   Keyboard:
     type: app-extension
     platform: iOS
-    sources: [Keyboard]
+    sources:
+      - Keyboard
+      # Test snippets until the companion app copies the owner's folder (plan step 5).
+      - path: ../fixtures/espanso
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: HexKeyboard
         product: KeyboardUI
+      - package: EspansoKeyboardCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).keyboard

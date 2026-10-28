@@ -262,7 +262,37 @@ typing and autocorrect feel unchanged.
 - Installed on the owner's iPhone (iOS 27.0) directly from gloob with
   `xcrun devicectl device install app`; the iPhone is paired with Xcode in gloob over the
   local network, contrary to what build-on-gloob.md said (now corrected).
-- Next (item 3): the owner types with it for a day, including Dutch.
+- Item 3: the owner tried it on the iPhone and gave the go-ahead (2026-10-28) without the
+  full day of typing.
+
+Items 4 and 5 (2026-10-28):
+
+- Hex's `KeyboardUI` got a `TextExpander` protocol and an `expander` property on
+  `HexKeyboardViewController`, so Hex's package doesn't depend on the Rust core. The
+  `Keyboard` target sets it to `EspansoExpander` (`app/Keyboard/EspansoExpander.swift`),
+  which loads the test snippets in `fixtures/espanso/`, bundled into the keyboard as
+  `espanso/`.
+- What the engine is told: after each key Hex handles, the view controller compares Hex's
+  copy of the text before the caret with what it was. Text added at the caret is passed
+  to `type`. If Hex also changed earlier text (autocorrect on a word ender, a smart dash,
+  the double-space period), the engine is reset first and then gets the added text, as
+  the trigger in progress no longer matches the field. So the engine matches what is in
+  the field, including smart quotes, not the raw key presses as Espanso on the Mac does.
+  Backspace asks the engine first; a returned undo replaces Hex's delete. Suggestions,
+  emoji, dictation, cursor moves and changes reported by the host reset the engine.
+- Expansions are applied through a new `TypingEngine.replace(_:with:movingBack:in:)`, so
+  Hex's own copy of the text, autocapitalization and suggestions stay right.
+- Simulator builds exclude x86_64, as the Rust core is built for Apple silicon only.
+- `scripts/test-keyboard.sh` builds everything, makes Hex the Simulator's active keyboard
+  and runs `app/UITests/SnippetTests.swift`: `;today`, `;jitsi` (script through
+  JavaScriptCore), backspace undo, `$|$`, a `word: true` trigger after a space, and
+  ordinary typing with autocapitalization and the double-space period. All 6 pass, and
+  Hex's own `TypingTests` still pass (9, plus 1 skipped as iPad-only):
+  `scripts/test-keyboard.sh -only-testing:HexUITests/TypingTests`.
+- Known limits: `type` runs on the main thread, so a slow script holds the keyboard for
+  up to the 1-second limit (architecture.md suggests a background thread; not needed for
+  the fixture scripts, which take milliseconds). A `word: true` trigger that Hex
+  autocorrects when the word ends no longer matches.
 
 ## Step 5: Companion app import
 

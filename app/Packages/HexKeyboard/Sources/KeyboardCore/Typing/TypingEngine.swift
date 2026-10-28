@@ -186,6 +186,21 @@ public struct TypingEngine {
         suggestionsChanged()
     }
 
+    /// Replaces the `count` characters before the caret with `string`, then moves the caret `back` characters left: a
+    /// snippet expansion (added for espanso-keyboard). Ends the word in progress, as text that arrives whole does.
+    public mutating func replace(_ count: Int, with string: String, movingBack back: Int = 0, in document: some TextDocument) {
+        attach(document)
+        forgetWord()
+        pending = nil
+        write(string, replacing: count, in: document)
+        if back > 0 {
+            document.moveCursor(by: -back)
+            text.moveCursor(by: -back)
+        }
+        refreshShift()
+        suggestionsChanged()
+    }
+
     /// Moves the caret, as the space bar trackpad does.
     mutating func moveCursor(by offset: Int, in document: some TextDocument) {
         attach(document)

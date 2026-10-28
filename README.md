@@ -18,8 +18,9 @@ new Jitsi meeting link (see `fixtures/espanso/match/base.yml`).
 `core/` has the expansion engine in Rust: it loads an Espanso folder, matches typed
 characters and renders expansions with Espanso's own libraries, including `script`
 variables (plan steps 1 and 2). `swift/EspansoKeyboardCore/` wraps it for Swift with
-UniFFI and runs scripts with JavaScriptCore (step 3). The keyboard itself follows in
-[docs/plan.md](docs/plan.md), step 4.
+UniFFI and runs scripts with JavaScriptCore (step 3). `app/` is the keyboard, a fork of
+Hex, which expands the test snippets in `fixtures/espanso/` (step 4). Loading your own
+Espanso folder is step 5 of [docs/plan.md](docs/plan.md).
 
 ## Documents
 
