@@ -30,6 +30,15 @@ it builds for the iPhone and the iPhone Simulator. Everything else is described 
 | [docs/decisions.md](docs/decisions.md) | Decisions already made, and why |
 | [AGENTS.md](AGENTS.md) | Rules for coding agents working in this repository |
 
+## Getting started
+
+```sh
+git clone git@github.com:mdbraber/espanso-keyboard.git ~/src/espanso-keyboard
+```
+
+Then follow [docs/build-on-gloob.md](docs/build-on-gloob.md) and step 0 of
+[docs/plan.md](docs/plan.md).
+
 ## Quick check
 
 ```sh

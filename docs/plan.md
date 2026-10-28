@@ -103,8 +103,8 @@ file. If memory after loading is above about 30 MB, stop and discuss before step
    (`com.shahidy.hexkeyboard` and its app group) in the project and in
    `app/App/Hex.entitlements` and `app/Keyboard/Keyboard.entitlements`. Make all of these
    come from `Config/Local.xcconfig`, which is not committed, with a committed
-   `Config/Local.xcconfig.example`. Do this only after the owner has chosen how builds
-   reach the iPhone ([build-on-gloob.md](build-on-gloob.md)).
+   `Config/Local.xcconfig.example`. Signing uses Xcode's signed-in account in gloob
+   ([build-on-gloob.md](build-on-gloob.md), "Signing").
 3. Install it on the iPhone unchanged and have the owner type with it for a day,
    including Dutch. **Stop here if the owner isn't happy with the typing.** Reconsider
    the host keyboard (see [decisions.md](decisions.md)) before going further.

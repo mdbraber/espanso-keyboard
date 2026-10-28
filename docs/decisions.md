@@ -47,6 +47,12 @@ pure-Swift package (`Packages/HexKeyboard/Sources/KeyboardCore`).
   iBoard (Apache 2.0, very new). KeyboardKit was ruled out: its licence is closed source,
   which cannot be combined with GPL code.
 
+## Signing in gloob
+
+Builds are signed in gloob with the Apple developer account Xcode there is signed in to
+(decided 2026-10-28). No other Apple credentials go into gloob. Details:
+[build-on-gloob.md](build-on-gloob.md).
+
 ## No App Store release
 
 GPL-3.0 and App Store terms conflict. Builds are installed on the owner's own devices

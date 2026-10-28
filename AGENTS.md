@@ -22,8 +22,12 @@ This repository builds an iPhone keyboard with Espanso snippet expansion. Read
 The project is built in gloob, a macOS virtual machine; see
 [docs/build-on-gloob.md](docs/build-on-gloob.md).
 
-- Don't set up signing certificates, provisioning profiles, App Store Connect keys or
-  Apple account logins. How builds reach the iPhone is the owner's decision.
+- Sign builds with the Apple developer account Xcode in gloob is already signed in to:
+  automatic signing and `xcodebuild -allowProvisioningUpdates`. Don't add other Apple
+  credentials (App Store Connect API keys, exported certificates) or sign in to other
+  accounts.
+- Uploading to TestFlight needs the owner's go-ahead first; see
+  [docs/build-on-gloob.md](docs/build-on-gloob.md).
 - Team IDs, identifier prefixes and app group names go in untracked
   `Config/Local.xcconfig`, never in committed files.
 - Never commit the owner's real snippet files. `fixtures/espanso/` holds test snippets

@@ -13,31 +13,38 @@ agents run. It was built from `ghcr.io/cirruslabs/macos-golden-gate-xcode:27.1`
 | Xcode builds for the iPhone Simulator, Simulator tests | Expected yes; confirm in step 0 | Simulator in a virtual machine is the first thing to check |
 | Installing on the owner's iPhone over USB | No | gloob has no USB passthrough |
 | Installing or debugging over Wi-Fi | No | The Mac's packet filter blocks gloob from the local network and the tailnet |
-| Signing for a real device | Owner's decision, see below | Needs an Apple signing certificate inside gloob |
+| Signing for a real device | Yes | Xcode in gloob is signed in to the owner's Apple developer account |
 
-## Getting a build onto the iPhone
+## Signing
 
-Signing needs an Apple development certificate and provisioning profile, or an
-App Store Connect key for TestFlight. gloob's standing rule is that its only standing
-credentials are the coding agent's login and the machine's SSH key, so any of these is a
-new credential. **The owner picks one of these before step 4; agents don't set it up.**
+Decided by the owner (2026-10-28): **builds are signed in gloob** with the Apple developer
+account that Xcode in gloob is already signed in to. Use automatic signing, and pass
+`-allowProvisioningUpdates` to `xcodebuild` so it can create certificates, identifiers,
+app groups and provisioning profiles through that account.
 
-1. **Build in gloob, sign and install on the Mac.** gloob builds the app for the device
-   unsigned (`CODE_SIGNING_ALLOWED=NO`). The owner copies the `.app` to the Mac and
-   signs and installs it there with Xcode or `xcrun devicectl device install app`.
-   No new credential in gloob. Most manual.
-2. **Sign in gloob, install from the Mac.** The development certificate lives in gloob.
-   gloob produces a signed `.app`; the Mac only installs it with `xcrun devicectl`.
-3. **TestFlight from gloob.** An App Store Connect API key in gloob uploads builds; the
-   iPhone installs them from the TestFlight app. Most automatic, and builds keep working
-   for 90 days. TestFlight for internal testers isn't an App Store release, but check that
-   this fits the GPL decision in [decisions.md](decisions.md).
-4. **Open the project in Xcode on the Mac** and run it on the iPhone from there. The Mac
-   has Xcode installed. Simplest for debugging the keyboard on a device, but the build
-   then happens outside gloob.
+Don't add other Apple credentials to gloob, such as App Store Connect API keys or
+exported certificate files.
 
-Whichever is chosen, put the team ID and identifier prefix in an untracked file
-(`Config/Local.xcconfig`, see step 4 of the plan), never in git.
+Put the team ID and identifier prefix in an untracked file (`Config/Local.xcconfig`, see
+step 4 of the plan), never in git.
+
+## Getting a signed build onto the iPhone
+
+gloob can't reach the iPhone, so a signed build gets there in one of two ways. Use the
+first until there's a reason to set up the second.
+
+1. **Install from the Mac.** gloob builds a signed `.app` for the device. The owner copies
+   it to the Mac (for example with `scp` from the Mac, which can reach gloob) and installs
+   it with `xcrun devicectl device install app --device <iPhone> <path to .app>`.
+2. **TestFlight from gloob.** gloob archives the app and uploads it to App Store Connect
+   with Xcode's signed-in account (`xcodebuild -exportArchive` with an export options
+   file set to upload). The iPhone installs builds from the TestFlight app, and each build
+   works for 90 days. This needs an app record in App Store Connect, which the owner
+   creates. Internal TestFlight testing isn't an App Store release, but the owner should
+   confirm it fits the GPL decision in [decisions.md](decisions.md) first.
+
+For debugging the keyboard on the device itself, open the project in Xcode on the Mac,
+which also has Xcode installed, and run it from there.
 
 ## One-time setup in gloob
 
@@ -61,7 +68,7 @@ separate install.
 ## Check the setup
 
 ```sh
-git clone <this repository> ~/src/espanso-keyboard
+git clone git@github.com:mdbraber/espanso-keyboard.git ~/src/espanso-keyboard
 cd ~/src/espanso-keyboard
 scripts/check-ios.sh
 bun fixtures/espanso/scripts/jitsi.js 10
