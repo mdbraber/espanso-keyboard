@@ -8,19 +8,15 @@ final class EspansoExpander: TextExpander {
     private static let log = Logger(subsystem: "espanso-keyboard", category: "expander")
     private let engine: EspansoEngine
 
-    /// Loads the Espanso folder bundled with the keyboard. Plan step 5 replaces this with the companion app's copy in
-    /// the app group.
-    static func bundled() -> EspansoExpander? {
-        guard let folder = Bundle.main.url(forResource: "espanso", withExtension: nil) else {
-            log.error("no espanso folder in the keyboard bundle")
-            return nil
-        }
+    /// Loads the app's copy of the Espanso folder (`EspansoLibrary`).
+    convenience init?(folder: URL) {
         do {
             let engine = try EspansoEngine(configFolder: folder.path, scriptRunner: JavaScriptCoreScriptRunner())
-            for warning in engine.warnings() { log.warning("\(warning, privacy: .public)") }
-            return EspansoExpander(engine: engine)
+            for warning in engine.warnings() { Self.log.warning("\(warning, privacy: .public)") }
+            Self.log.info("loaded \(engine.search(query: "").count) snippets from \(folder.lastPathComponent, privacy: .public)")
+            self.init(engine: engine)
         } catch {
-            log.error("loading \(folder.path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            Self.log.error("loading \(folder.path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

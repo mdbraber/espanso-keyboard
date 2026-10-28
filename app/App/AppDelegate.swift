@@ -12,6 +12,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = UIWindow(windowScene: scene)
         LaunchOptions.resetSettingsIfAsked()
         LaunchOptions.applyOneHanded()
+        EspansoImport.copyIfAsked()
         let home = HomeViewController()
         let tabs = UITabBarController(tabs: [
             UITab(title: "Hex", image: UIImage(systemName: "keyboard"), identifier: "home") { _ in Self.navigation(home) },
@@ -24,6 +25,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
         open(options.urlContexts)
+    }
+
+    /// Each time Hex comes to the front, the keyboard gets a fresh copy of the Espanso folder (espanso-keyboard).
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        EspansoImport.reloadInBackground()
     }
 
     private static func navigation(_ root: UIViewController) -> UINavigationController {

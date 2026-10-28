@@ -1,17 +1,23 @@
 import XCTest
 
-/// Espanso snippets through the real keyboard (espanso-keyboard, plan step 4), with the test snippets from
-/// fixtures/espanso/ bundled in the keyboard. Run through scripts/test-keyboard.sh, which makes Hex the active keyboard.
+/// Espanso snippets through the real keyboard (espanso-keyboard, plan steps 4 and 5). Hex copies the test snippets
+/// in fixtures/espanso/ into the app group at launch (`-EspansoImport`), as it copies the owner's folder, and the
+/// keyboard loads that copy. Run through scripts/test-keyboard.sh, which makes Hex the active keyboard.
 final class SnippetTests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-HexFocus", "YES", "-HexOrientation", "portrait"]
+        app.launchArguments = ["-HexFocus", "YES", "-HexOrientation", "portrait", "-EspansoImport", Self.fixture]
         app.launch()
         XCTAssertTrue(key("space").waitForExistence(timeout: 10), "Hex keyboard is not the active keyboard")
     }
+
+    /// fixtures/espanso/, from this file's place in the repository.
+    private static let fixture = URL(filePath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "fixtures/espanso").path
 
     private var text: String { app.textViews.firstMatch.value as? String ?? "" }
 
@@ -49,6 +55,16 @@ final class SnippetTests: XCTestCase {
     func testOrdinaryTypingIsUnchanged() {
         type("hello world  next")
         XCTAssertEqual(text, "Hello world. Next")
+    }
+
+    func testTheEspansoScreenShowsTheCopy() throws {
+        app.cells.staticTexts["Espanso Snippets"].firstMatch.tap()
+        let footer = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'snippets, copied'")).firstMatch
+        XCTAssertTrue(footer.waitForExistence(timeout: 5), "the screen shows how many snippets were copied")
+        XCTAssertTrue(app.staticTexts["espanso"].exists, "the folder's name")
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     // MARK: Typing

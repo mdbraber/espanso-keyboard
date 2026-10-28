@@ -7,7 +7,7 @@ import KeyboardCore
 /// value changes nothing, and a side that may write the group puts its copy back.
 public enum SettingsStore {
     /// From the `HexAppGroup` Info.plist key, set from `APP_GROUP_ID` (Config/Signing.xcconfig).
-    public static let appGroup = Bundle.main.object(forInfoDictionaryKey: "HexAppGroup") as? String
+    nonisolated public static let appGroup = Bundle.main.object(forInfoDictionaryKey: "HexAppGroup") as? String
         ?? "group.com.shahidy.hexkeyboard"
 
     public static let toggles: [(key: String, path: WritableKeyPath<KeyboardSettings, Bool>)] = [

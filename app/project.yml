@@ -30,11 +30,12 @@ targets:
   Hex:
     type: application
     platform: iOS
-    sources: [App]
+    sources: [App, Shared]
     dependencies:
       - target: Keyboard
       - package: HexKeyboard
         product: KeyboardUI
+      - package: EspansoKeyboardCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
@@ -78,12 +79,7 @@ targets:
   Keyboard:
     type: app-extension
     platform: iOS
-    sources:
-      - Keyboard
-      # Test snippets until the companion app copies the owner's folder (plan step 5).
-      - path: ../fixtures/espanso
-        type: folder
-        buildPhase: resources
+    sources: [Keyboard, Shared]
     dependencies:
       - package: HexKeyboard
         product: KeyboardUI

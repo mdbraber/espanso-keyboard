@@ -309,6 +309,31 @@ Items 4 and 5 (2026-10-28):
 **Done when:** a snippet added on the Mac in Espanso's folder works on the iPhone after
 opening the app, and also still works in Espanso on the Mac.
 
+**Progress (2026-10-28):** items 1 to 3 built; the "Done when" check needs the owner's
+folder on the iPhone.
+
+- Hex's home screen has an "Espanso Snippets" row opening `EspansoViewController`: pick
+  the folder (document picker for folders, kept as a bookmark), Reload, the number of
+  snippets and when they were copied, and Espanso's warnings.
+- `EspansoImport` (`app/App/`) copies `config/`, `match/` and `scripts/` file by file
+  through a file coordinator, so iCloud Drive downloads files first, into
+  `<app group>/Espanso/<UUID>/`. It loads the copy as the keyboard will, to collect
+  warnings and refuse a folder that doesn't load. Then it points the `current` symbolic
+  link at it with one `rename` and removes all but the two newest copies; the one before
+  may still be read by an open keyboard. Hex copies again each time it becomes active,
+  and on Reload.
+- The keyboard resolves `current` (`app/Shared/EspansoLibrary.swift`) when it appears and
+  reloads when it points somewhere new; this replaces checking the folder's modification
+  date. The fixture is no longer bundled into the keyboard.
+- UI tests: Debug builds take `-EspansoImport <folder>`, so `SnippetTests` copy
+  `fixtures/espanso/` through the same code before typing. A seventh test checks the
+  Espanso screen. All 7 pass.
+- In the Simulator the keyboard reads the app group without Full Access; whether the
+  iPhone allows that is to be seen (architecture.md assumes Full Access is needed).
+- Once, every keyboard stopped appearing in the Simulator, Apple's included, until the
+  device was erased (`xcrun simctl erase`). The first run after that missed one
+  expansion, probably first-boot timing; the reruns passed.
+
 ## Step 6: Later
 
 In whatever order is useful:
