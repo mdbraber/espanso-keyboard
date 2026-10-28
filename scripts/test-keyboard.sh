@@ -28,7 +28,7 @@ if [[ "$current" != *"$keyboard"* ]]; then
   xcrun simctl bootstatus "$udid" -b >/dev/null
 fi
 
-[ $# -gt 0 ] || set -- -only-testing:HexUITests/SnippetTests
+[ $# -gt 0 ] || set -- -only-testing:HexUITests/SnippetTests -only-testing:HexUITests/FeatureTests
 xcodebuild test \
   -project HexKeyboard.xcodeproj -scheme Hex \
   -destination "id=$udid" \

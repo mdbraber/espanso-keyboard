@@ -357,6 +357,47 @@ snippets (13) were not approved.
 12. Usage counts per snippet, kept on the phone.
 - Espanso snippets take precedence over iOS Text Replacements (decisions.md).
 
+**Result (2026-10-28): all built.**
+
+- Engine (`core/`): `choice` and `form` variables ask instead of blocking. The engine
+  renders with a `Prompter` that answers from the answers so far and records the first
+  question it can't, returns that `Prompt`, and renders again once it is answered
+  (`src/prompt.rs`). `clipboard` reads a host `Clipboard`. `insert_snippet` expands a
+  snippet by id, `preview` renders with default answers, `complete` finds triggers the
+  text before the caret has begun (two characters, or three at a word start for
+  triggers starting with a letter). Snippets carry their id, match file, raw text and
+  variables; each expansion names its snippet. Editing (`src/edit.rs`): find one
+  snippet's lines by its first trigger or regex (parsing just that item with
+  `serde_norway`, Espanso's YAML library), replace them, or append a new snippet;
+  nothing else in the file changes. 59 Rust tests.
+- Hex: small hooks only. `TextExpander` gained completions, accepting one, reserving
+  Text Replacement shortcuts and the snippets button. `HexKeyboardViewController` gained
+  a panel above the suggestion bar, `keyCapture` (the keys type into the panel), and
+  `applyExpansion`. The suggestion bar gained a snippets button at its left end; snippet
+  completions take the bar from word suggestions. Text Replacements whose shortcut is a
+  trigger are left out of the corrector (decisions.md).
+- Keyboard: snippet panel (favourites, then by match file; fuzzy search typed with the
+  keys; return inserts the best match), choice panel, form panel (text fields typed with
+  the keys, choice fields cycle with a tap), clipboard through `UIPasteboard`, usage
+  counts in `<app group>/Espanso/usage.json`, the on/off switch.
+- App (Keyboard Settings › Espanso Snippets): Expand Snippets switch; list grouped by
+  file with fuzzy search and "used N×"; a detail screen with triggers, file, text,
+  variables, preview, Copy Result, Favourite and usage; Add Snippet (to
+  `match/iphone.yml`); Edit Snippet (its YAML lines). Edits are tried on a scratch copy
+  and refused when Espanso reports new warnings, then written through a file coordinator
+  and the folder is copied again.
+- UI tests (`scripts/test-keyboard.sh`): `SnippetTests` (8) and `FeatureTests` (11)
+  pass. `testASnippetWinsOverATextReplacement` adds a Text Replacement `brb` in Settings
+  and checks Espanso's `brb` wins; with the fix switched off it fails as it should. They copy the fixture to `build/ui-espanso` first, so edits never touch
+  `fixtures/`. `-EspansoImport` (Debug only) also resets the switch, favourites and
+  counts.
+- Hex's checks (its `app:verify` skill, run locally instead of over `ssh mac`): package
+  tests pass (10 and 129, including the 3,000-run `TextStateStressTests`).
+- Not tested automatically: Espanso winning over a Text Replacement (needs a Text
+  Replacement in Settings), and a real change through the YAML editor in the UI (the
+  Rust tests cover the text change; typing YAML indentation through Hex's keys runs into
+  its double-space period).
+
 Earlier list, kept for reference:
 - `clipboard` variables through `UIPasteboard`.
 - ~~Regex triggers (`espanso_match::regex`).~~ Done 2026-10-28, after the owner's first

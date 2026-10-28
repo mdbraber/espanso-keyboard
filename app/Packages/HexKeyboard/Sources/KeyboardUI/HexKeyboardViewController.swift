@@ -3,8 +3,25 @@ import KeyboardCore
 
 open class HexKeyboardViewController: UIInputViewController {
     open var hapticsEnabled: Bool { hasFullAccess && engine.settings.haptics }
-    /// Snippet expansion, if the app provides one (espanso-keyboard). Set before `viewDidLoad`.
-    public var expander: TextExpander?
+    /// Snippet expansion, if the app provides one (espanso-keyboard).
+    public var expander: TextExpander? {
+        didSet {
+            guard isViewLoaded else { return }
+            learnReplacements()
+            render()
+        }
+    }
+    /// While set, typed characters, delete and return go here instead of the text field: a panel's own field
+    /// (espanso-keyboard).
+    public var keyCapture: ((CapturedKey) -> Void)?
+
+    public enum CapturedKey: Hashable, Sendable {
+        case text(String), delete, `return`
+    }
+
+    private let panelHost = UIView()
+    private lazy var panelHeightConstraint = panelHost.heightAnchor.constraint(equalToConstant: 0)
+    private var lexicon: UILexicon?
 
     private let keyboardView = KeyboardView()
     private var dictation = Dictation.Status()
@@ -25,13 +42,18 @@ open class HexKeyboardViewController: UIInputViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
-        [suggestionBar, keyboardView].forEach {
+        [panelHost, suggestionBar, keyboardView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
+        panelHost.clipsToBounds = true
         keyboardHeightConstraint.priority = .required - 1
         NSLayoutConstraint.activate([
-            suggestionBar.topAnchor.constraint(equalTo: view.topAnchor),
+            panelHost.topAnchor.constraint(equalTo: view.topAnchor),
+            panelHost.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            panelHost.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            panelHeightConstraint,
+            suggestionBar.topAnchor.constraint(equalTo: panelHost.bottomAnchor),
             suggestionBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             suggestionBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             barHeightConstraint,
@@ -54,11 +76,19 @@ open class HexKeyboardViewController: UIInputViewController {
         }
         engine.defersSuggestions = true
         keyboardView.onEvent = { [unowned self] in handle($0) }
-        suggestionBar.onSelect = { [unowned self] in
+        suggestionBar.onSelect = { [unowned self] suggestion in
             feedback(.input)
-            engine.accept($0, in: document)
+            if let completion = completions.first(where: { $0.title == suggestion.text }) {
+                if let expansion = expander?.accept(completion) { applyExpansion(expansion) }
+                return
+            }
+            engine.accept(suggestion, in: document)
             expander?.reset()
             render()
+        }
+        suggestionBar.onSnippets = { [unowned self] in
+            feedback(.other)
+            expander?.showSnippets()
         }
         suggestionBar.onEmoji = { [unowned self] in
             feedback(.input)
@@ -120,7 +150,8 @@ open class HexKeyboardViewController: UIInputViewController {
         TouchTrace.shared.watch(view.window)
         Task { [weak self] in
             guard let lexicon = await self?.requestSupplementaryLexicon() else { return }
-            self?.engine.corrector?.learn(lexicon)
+            self?.lexicon = lexicon
+            self?.learnReplacements()
             self?.engine.suggestionsChanged()
             self?.render()
         }
@@ -203,6 +234,7 @@ open class HexKeyboardViewController: UIInputViewController {
         suggestionBar.keyInset = metrics.sideInset
         suggestionBar.topPadding = device == .phone ? 10 : 0
         suggestionBar.update(mic: mic, notice: dictation.failure ?? hint, theme: theme)
+        suggestionBar.showsSnippets = expander?.hasSnippets ?? false
         renderSuggestions()
 
         let height = metrics.height(rows: layout.rows.count, hasNumberRow: layout.hasNumberRow)
@@ -217,9 +249,18 @@ open class HexKeyboardViewController: UIInputViewController {
 
     private var ranking = false
 
+    /// Snippets offered in the suggestion bar for the text before the caret (espanso-keyboard).
+    private var completions: [TextCompletion] = []
+
     private func renderSuggestions() {
-        guard engine.suggestionsAreStale else {
+        completions = Array((expander?.completions(before: engine.text.before) ?? []).prefix(3))
+        guard engine.suggestionsAreStale || !completions.isEmpty else {
             return suggestionBar.update(engine.suggestions, emoji: engine.emojiSuggestions, enabled: engine.showsSuggestions, theme: theme)
+        }
+        // Snippets the typing has begun take the bar from the word suggestions.
+        guard completions.isEmpty else {
+            let snippets = completions.map { Suggestion($0.title, .candidate) }
+            return suggestionBar.update(snippets, emoji: [], enabled: true, theme: theme)
         }
         guard !ranking, let job = engine.suggestionJob() else { return }
         ranking = true
@@ -255,12 +296,57 @@ open class HexKeyboardViewController: UIInputViewController {
         default:
             break
         }
+        if let keyCapture, let key = captured(event) { return keyCapture(key) }
         let before = engine.text.before
         if case .down(let key, _) = event, key.action == .delete, let undo = expander?.backspace() {
             return apply(undo)
         }
         if engine.handle(event, in: document) { render() }
         followEdit(from: before, by: Edit(event))
+    }
+
+    /// The key a panel's field gets, for events that would edit the text field.
+    private func captured(_ event: KeyboardEvent) -> CapturedKey? {
+        switch event {
+        case .type(let key, let tap):
+            if key.action == .space { return .text(" ") }
+            return .text(engine.shift.isUppercase && engine.layer == .letters ? tap.key.uppercased() : tap.key)
+        case .slide(let text): return .text(text)
+        case .down(let key, _) where key.action == .delete: return .delete
+        case .trigger(let key) where key.action == .return: return .return
+        case .trigger(let key) where key.action == .tab: return .text("\t")
+        default: return nil
+        }
+    }
+
+    /// Shows `panel` above the suggestion bar, `height` points tall, or removes it (espanso-keyboard).
+    public func showPanel(_ panel: UIView?, height: CGFloat = 0) {
+        panelHost.subviews.forEach { $0.removeFromSuperview() }
+        if let panel {
+            panel.translatesAutoresizingMaskIntoConstraints = false
+            panelHost.addSubview(panel)
+            NSLayoutConstraint.activate([
+                panel.topAnchor.constraint(equalTo: panelHost.topAnchor),
+                panel.bottomAnchor.constraint(equalTo: panelHost.bottomAnchor),
+                panel.leadingAnchor.constraint(equalTo: panelHost.leadingAnchor),
+                panel.trailingAnchor.constraint(equalTo: panelHost.trailingAnchor),
+            ])
+        }
+        panelHeightConstraint.constant = panel == nil ? 0 : height
+    }
+
+    /// Applies an expansion the app's expander produced outside typing, such as a snippet picked in a panel.
+    public func applyExpansion(_ expansion: TextExpansion) {
+        apply(expansion)
+    }
+
+    /// Text Replacements from Settings, without the shortcuts a snippet takes (espanso-keyboard: Espanso wins).
+    private func learnReplacements() {
+        guard let lexicon else { return }
+        let entries = lexicon.entries.filter { !(expander?.reserves($0.userInput) ?? false) }
+        engine.corrector?.learn(entries)
+        engine.suggestionsChanged()
+        render()
     }
 
     /// What a keyboard event did to the text, for the expander.
@@ -355,6 +441,7 @@ open class HexKeyboardViewController: UIInputViewController {
 
     private func startDeleteRepeat() {
         deleteRepeat = DeleteRepeat { [unowned self] words in
+            if let keyCapture { return keyCapture(.delete) }
             let before = engine.text.before
             if words { engine.deleteWord(in: document) } else { engine.perform(.delete, in: document) }
             followEdit(from: before, by: words ? .other : .deleting)
@@ -386,8 +473,7 @@ open class HexKeyboardViewController: UIInputViewController {
 }
 
 private extension Corrector {
-    func learn(_ lexicon: UILexicon) {
-        let entries = lexicon.entries
+    func learn(_ entries: [UILexiconEntry]) {
         setReplacements(entries.filter { $0.userInput != $0.documentText }.map { ($0.userInput, $0.documentText) })
         setNames(entries.filter { $0.userInput == $0.documentText }.map(\.documentText))
     }

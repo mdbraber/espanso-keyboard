@@ -1,15 +1,17 @@
+import EspansoKeyboardCore
 import UIKit
 import UniformTypeIdentifiers
 
-/// Picks the Espanso folder in iCloud Drive and shows the keyboard's copy of it: the snippets it expands and
-/// Espanso's warnings (espanso-keyboard, plan step 5).
+/// Picks the Espanso folder in iCloud Drive and shows the keyboard's copy of it: the snippets it expands, grouped by
+/// match file, and Espanso's warnings (espanso-keyboard, plan steps 5 and 6).
 final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate, UISearchResultsUpdating {
     private enum Row: Hashable {
-        case folder, reload, warning(String), snippet(EspansoImport.Snippet)
+        case enabled, folder, reload, warning(String), snippet(Int32)
     }
 
     private struct Section {
         var title: String?
+        var footer: String?
         var rows: [Row]
     }
 
@@ -18,11 +20,16 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
     private var copying = false
     private let search = UISearchController()
     private var query: String { search.searchBar.text?.trimmingCharacters(in: .whitespaces) ?? "" }
+    /// The keyboard's copy, loaded here too for the details and previews.
+    private var engine: EspansoEngine?
+    private var snippets: [Int32: SnippetSummary] = [:]
+    private var usage: [String: EspansoShared.Usage] = [:]
 
     /// The last copy in one line, for the Espanso section in Keyboard Settings.
     static var summary: String {
         guard let summary = EspansoImport.lastSummary else { return "Hex types your Espanso snippets. Choose the folder you sync through iCloud Drive." }
-        return "\(summary.snippets) snippets, copied \(summary.date.formatted(date: .abbreviated, time: .shortened))."
+        let off = EspansoShared.isEnabled ? "" : " Expanding is off."
+        return "\(summary.snippets) snippets, copied \(summary.date.formatted(date: .abbreviated, time: .shortened)).\(off)"
     }
 
     init() {
@@ -39,41 +46,56 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         search.obscuresBackgroundDuringPresentation = false
         search.searchBar.placeholder = "Search Snippets"
         navigationItem.searchController = search
+        let add = UIBarButtonItem(systemItem: .add, primaryAction: UIAction { [unowned self] _ in addSnippet() })
+        add.accessibilityLabel = "Add Snippet"
+        navigationItem.rightBarButtonItem = add
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if !copying { summary = EspansoImport.lastSummary }
+        loadEngine()
     }
 
     func updateSearchResults(for searchController: UISearchController) {
         tableView.reloadData()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        if !copying { summary = EspansoImport.lastSummary }
+    /// Loads the current copy, for its snippets' details; usage counts are read again too.
+    private func loadEngine() {
+        if let folder = EspansoLibrary.current {
+            engine = try? EspansoEngine(configFolder: folder.path, scriptRunner: JavaScriptCoreScriptRunner())
+            engine?.setClipboard(clipboard: AppClipboard())
+        }
+        snippets = Dictionary((engine?.search(query: "") ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        usage = EspansoShared.usage()
+        navigationItem.rightBarButtonItem?.isEnabled = EspansoImport.sourceFolder != nil
         tableView.reloadData()
     }
 
     private var sections: [Section] {
-        var sections = [Section(rows: [.folder, .reload])]
-        let snippets = (summary?.items ?? []).filter(matchesQuery)
-        if !snippets.isEmpty { sections.append(Section(title: "Snippets", rows: snippets.map(Row.snippet))) }
-        let warnings = summary?.warnings ?? []
-        if !warnings.isEmpty, query.isEmpty { sections.append(Section(title: "Warnings", rows: warnings.map(Row.warning))) }
+        var sections = [
+            Section(footer: "When off, Hex types your triggers as they are. The snippets button above the keys still works.", rows: [.enabled]),
+            Section(footer: folderFooter, rows: [.folder, .reload]),
+        ]
+        let all = snippets.values.sorted { ($0.file, $0.triggers[0]) < ($1.file, $1.triggers[0]) }
+        if query.isEmpty {
+            for (file, inFile) in Dictionary(grouping: all, by: \.file).sorted(by: { $0.key < $1.key }) {
+                sections.append(Section(title: file, rows: inFile.map { .snippet($0.id) }))
+            }
+            let warnings = summary?.warnings ?? []
+            if !warnings.isEmpty { sections.append(Section(title: "Warnings", rows: warnings.map(Row.warning))) }
+        } else {
+            let found = all
+                .compactMap { snippet in Fuzzy.score(query, in: snippet.triggers + [snippet.label]).map { (snippet, $0) } }
+                .sorted { $0.1 > $1.1 }
+                .map { Row.snippet($0.0.id) }
+            sections.append(Section(title: found.isEmpty ? "No Snippets Found" : "Snippets", rows: found))
+        }
         return sections
     }
 
-    private func matchesQuery(_ snippet: EspansoImport.Snippet) -> Bool {
-        query.isEmpty || ([snippet.label] + snippet.triggers).contains { $0.localizedCaseInsensitiveContains(query) }
-    }
-
-    override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
-
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rows.count }
-
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        sections[section].title
-    }
-
-    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        guard section == 0 else { return nil }
+    private var folderFooter: String {
         if copying { return "Copying…" }
         if let failure { return "Not copied: \(failure)" }
         guard let summary else {
@@ -83,12 +105,29 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         return "\(summary.snippets) snippets, copied \(date). The copy is made again each time you open Hex or tap Reload."
     }
 
+    override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rows.count }
+
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { sections[section].title }
+
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { sections[section].footer }
+
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         var content = UIListContentConfiguration.valueCell()
         cell.accessoryType = .none
+        cell.accessoryView = nil
         cell.selectionStyle = .default
         switch sections[indexPath.section].rows[indexPath.row] {
+        case .enabled:
+            content.text = "Expand Snippets"
+            let toggle = UISwitch()
+            toggle.isOn = EspansoShared.isEnabled
+            toggle.accessibilityIdentifier = "Expand Snippets"
+            toggle.addAction(UIAction { [unowned toggle] _ in EspansoShared.isEnabled = toggle.isOn }, for: .valueChanged)
+            cell.accessoryView = toggle
+            cell.selectionStyle = .none
         case .folder:
             content.text = "Espanso Folder"
             content.secondaryText = summary?.folderName ?? EspansoImport.rememberedFolder?.lastPathComponent ?? "Choose…"
@@ -97,7 +136,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             content = .cell()
             content.text = "Reload"
             content.textProperties.color = .tintColor
-            if EspansoImport.rememberedFolder == nil || copying {
+            if EspansoImport.sourceFolder == nil || copying {
                 content.textProperties.color = .secondaryLabel
                 cell.selectionStyle = .none
             }
@@ -106,14 +145,16 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             content.text = warning
             content.textProperties.font = .preferredFont(forTextStyle: .footnote)
             cell.selectionStyle = .none
-        case .snippet(let snippet):
+        case .snippet(let id):
+            let snippet = snippets[id]
             content = .subtitleCell()
-            content.text = snippet.triggers.joined(separator: "  ")
+            content.text = snippet?.triggers.joined(separator: "  ")
             content.textProperties.font = .monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize, weight: .regular)
-            content.secondaryText = snippet.label
+            let used = (snippet?.triggers.first).flatMap { usage[$0] }.map { " · used \($0.count)×" } ?? ""
+            content.secondaryText = (snippet?.label ?? "") + used
             content.secondaryTextProperties.color = .secondaryLabel
             content.secondaryTextProperties.numberOfLines = 2
-            cell.selectionStyle = .none
+            cell.accessoryType = .disclosureIndicator
         }
         cell.contentConfiguration = content
         return cell
@@ -128,9 +169,12 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             picker.directoryURL = EspansoImport.rememberedFolder
             present(picker, animated: true)
         case .reload:
-            guard let folder = EspansoImport.rememberedFolder, !copying else { return }
+            guard let folder = EspansoImport.sourceFolder, !copying else { return }
             copy(from: folder)
-        case .warning, .snippet:
+        case .snippet(let id):
+            guard let engine, let snippet = snippets[id] else { return }
+            navigationController?.pushViewController(SnippetViewController(snippet: snippet, engine: engine), animated: true)
+        case .enabled, .warning:
             break
         }
     }
@@ -146,6 +190,10 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         copy(from: folder)
     }
 
+    private func addSnippet() {
+        navigationController?.pushViewController(NewSnippetViewController(), animated: true)
+    }
+
     /// Copies off the main thread: files iCloud Drive hasn't downloaded yet take a while.
     private func copy(from folder: URL) {
         copying = true
@@ -158,7 +206,14 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             case .success(let summary): self.summary = summary
             case .failure(let error): failure = error.localizedDescription
             }
-            tableView.reloadData()
+            loadEngine()
         }
+    }
+}
+
+/// The clipboard for `clipboard` variables in previews.
+final class AppClipboard: Clipboard {
+    func text() -> String? {
+        UIPasteboard.general.string
     }
 }

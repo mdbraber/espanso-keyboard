@@ -12,6 +12,11 @@ final class SuggestionBar: UIView {
     var onMic: () -> Void = {}
     var onMicHold: () -> Void = {}
     var onNotice: () -> Void = {}
+    /// A snippets button at the left end, opening the app's snippet panel (espanso-keyboard).
+    var onSnippets: () -> Void = {}
+    var showsSnippets = false {
+        didSet { if showsSnippets != oldValue { snippets.isHidden = !showsSnippets; setNeedsLayout() } }
+    }
     var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
     /// Where the keys end, so the mic's pill lines up with the last key.
     var keyInset: CGFloat = 0 { didSet { if keyInset != oldValue { setNeedsLayout() } } }
@@ -22,6 +27,7 @@ final class SuggestionBar: UIView {
     private let dividers = (0..<3).map { _ in UIView() }
     private var emoji: [EmojiPick] = []
     private let mic = MicButton()
+    private let snippets = UIButton(type: .system)
     private let notice = UILabel()
     private var enabled = true
     private var noticed = false
@@ -40,6 +46,12 @@ final class SuggestionBar: UIView {
         mic.onHold = { [unowned self] in onMicHold() }
         mic.onHighlight = { [unowned self] in refreshDividers() }
         addSubview(mic)
+        snippets.setImage(UIImage(systemName: "text.insert", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17)), for: .normal)
+        snippets.accessibilityIdentifier = "hex.snippets"
+        snippets.accessibilityLabel = "Snippets"
+        snippets.isHidden = true
+        snippets.addAction(UIAction { [unowned self] _ in onSnippets() }, for: .touchUpInside)
+        addSubview(snippets)
         notice.isHidden = true
         notice.font = .systemFont(ofSize: 15)
         notice.textAlignment = .center
@@ -71,6 +83,7 @@ final class SuggestionBar: UIView {
             setNeedsLayout()
         }
         self.emoji.forEach { $0.theme = theme }
+        snippets.tintColor = theme.candidate.ui
         dividers.forEach { $0.backgroundColor = theme.candidateDivider.ui }
         refresh()
     }
@@ -122,8 +135,11 @@ final class SuggestionBar: UIView {
         let content = bounds.inset(by: UIEdgeInsets(top: topPadding, left: 0, bottom: 0, right: 0))
         let mic = CGRect(x: bounds.width - keyInset + MicButton.pillInset - MicButton.width, y: content.minY, width: MicButton.width, height: content.height)
         let end = mic.minX
-        let width = min(end / CGFloat(slots.count), maximumSlotWidth)
-        let start = min(bounds.midX - width * CGFloat(slots.count) / 2, end - width * CGFloat(slots.count))
+        // The snippets button mirrors the mic at the left end; the slots share what's between.
+        let begin = showsSnippets ? keyInset - MicButton.pillInset + MicButton.width : 0
+        snippets.frame = CGRect(x: begin - MicButton.width, y: content.minY, width: MicButton.width, height: content.height)
+        let width = min((end - begin) / CGFloat(slots.count), maximumSlotWidth)
+        let start = max(begin, min(bounds.midX - width * CGFloat(slots.count) / 2, end - width * CGFloat(slots.count)))
         for (index, slot) in slots.enumerated() {
             let minX = (start + CGFloat(index) * width).rounded(scale: scale)
             let maxX = (start + CGFloat(index + 1) * width).rounded(scale: scale)
@@ -144,7 +160,7 @@ final class SuggestionBar: UIView {
         for (index, divider) in dividers.enumerated() {
             divider.frame = CGRect(x: slots[index].frame.maxX - 1, y: content.midY - 12, width: 1, height: 24)
         }
-        notice.frame = CGRect(x: 12, y: content.minY, width: end - 16, height: content.height)
+        notice.frame = CGRect(x: max(12, begin), y: content.minY, width: end - max(12, begin) - 4, height: content.height)
     }
 }
 

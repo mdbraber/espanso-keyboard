@@ -64,6 +64,24 @@ nonisolated enum EspansoImport {
         return folder
     }
 
+    /// The folder copies are made from and edits go to: the picked folder, or in Debug builds the one given with
+    /// `-EspansoImport`.
+    static var sourceFolder: URL? {
+        #if DEBUG
+        if let path = UserDefaults.standard.string(forKey: "EspansoImport") {
+            return URL(filePath: path, directoryHint: .isDirectory)
+        }
+        #endif
+        return rememberedFolder
+    }
+
+    /// Runs `body` with access to `folder`, which a picked folder needs.
+    static func accessing<T>(_ folder: URL, _ body: () throws -> T) rethrows -> T {
+        let accessing = folder.startAccessingSecurityScopedResource()
+        defer { if accessing { folder.stopAccessingSecurityScopedResource() } }
+        return try body()
+    }
+
     /// What the last successful copy found.
     static var lastSummary: Summary? {
         UserDefaults.standard.data(forKey: summaryKey).flatMap { try? JSONDecoder().decode(Summary.self, from: $0) }
@@ -79,10 +97,14 @@ nonisolated enum EspansoImport {
         }
     }
 
-    /// `-EspansoImport <folder>` copies that folder at launch, for the UI tests (Debug builds only).
+    /// `-EspansoImport <folder>` copies that folder at launch, for the UI tests (Debug builds only). It also turns
+    /// expanding on and clears favourites and usage counts, so each test starts the same.
     static func copyIfAsked() {
         #if DEBUG
         guard let path = UserDefaults.standard.string(forKey: "EspansoImport") else { return }
+        EspansoShared.isEnabled = true
+        EspansoShared.favourites = []
+        if let root = EspansoLibrary.root { try? FileManager.default.removeItem(at: root.appending(path: "usage.json")) }
         do { try copy(from: URL(filePath: path, directoryHint: .isDirectory)) } catch {
             log.error("copy of \(path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -92,7 +114,7 @@ nonisolated enum EspansoImport {
     /// Copies the remembered folder again.
     @discardableResult
     static func reload() throws -> Summary {
-        guard let folder = rememberedFolder else { throw Failure.noFolder }
+        guard let folder = sourceFolder else { throw Failure.noFolder }
         return try copy(from: folder)
     }
 

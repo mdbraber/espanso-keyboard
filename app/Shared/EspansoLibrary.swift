@@ -18,3 +18,50 @@ nonisolated enum EspansoLibrary {
         return root.appending(path: name, directoryHint: .isDirectory)
     }
 }
+
+/// Settings and records the app and the keyboard share through the app group (espanso-keyboard, plan step 6). Snippets
+/// are named by their first trigger (or regex), which stays the same across copies.
+nonisolated enum EspansoShared {
+    private static var defaults: UserDefaults? { UserDefaults(suiteName: SettingsStore.appGroup) }
+
+    /// Whether typing expands snippets; the snippet panel works either way.
+    static var isEnabled: Bool {
+        get { defaults?.object(forKey: "EspansoEnabled") as? Bool ?? true }
+        set { defaults?.set(newValue, forKey: "EspansoEnabled") }
+    }
+
+    /// Favourite snippets, first in the keyboard's snippet panel.
+    static var favourites: [String] {
+        get { defaults?.stringArray(forKey: "EspansoFavourites") ?? [] }
+        set { defaults?.set(newValue, forKey: "EspansoFavourites") }
+    }
+
+    static func toggleFavourite(_ snippet: String) {
+        var favourites = favourites
+        if let index = favourites.firstIndex(of: snippet) { favourites.remove(at: index) } else { favourites.append(snippet) }
+        self.favourites = favourites
+    }
+
+    struct Usage: Codable, Hashable {
+        var count: Int
+        var last: Date
+    }
+
+    private static var usageFile: URL? { EspansoLibrary.root?.appending(path: "usage.json") }
+
+    /// How often each snippet expanded, counted by the keyboard on this iPhone.
+    static func usage() -> [String: Usage] {
+        guard let file = usageFile, let data = try? Data(contentsOf: file) else { return [:] }
+        return (try? JSONDecoder().decode([String: Usage].self, from: data)) ?? [:]
+    }
+
+    /// Counts one expansion. The keyboard can write the app group only with Full Access; without it this does nothing.
+    static func recordUse(of snippet: String) {
+        guard !snippet.isEmpty, let file = usageFile else { return }
+        var usage = usage()
+        usage[snippet, default: Usage(count: 0, last: .now)].count += 1
+        usage[snippet]?.last = .now
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? JSONEncoder().encode(usage).write(to: file, options: .atomic)
+    }
+}
