@@ -27,6 +27,19 @@ matches:
         params:
           args: [bun, "%CONFIG%/scripts/jitsi.js", "10"]
 
+  # Earlier variables reach the script as ESPANSO_<NAME>.
+  - trigger: ";hallo"
+    replace: "{{greeting_line}}"
+    vars:
+      - name: who
+        type: echo
+        params:
+          echo: "Anna"
+      - name: greeting_line
+        type: script
+        params:
+          args: [bun, "%CONFIG%/scripts/greet.js"]
+
   # Only between word separators.
   - trigger: "brb"
     replace: "be right back"

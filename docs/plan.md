@@ -135,6 +135,21 @@ error output fails the snippet unless `ignore_error: true`; `trim: false` keeps 
 
 **Done when:** these tests pass.
 
+**Result (2026-10-28): done.** The extension is `core/src/script.rs`, adapted from
+Espanso's `script.rs` with `convert_to_env_variables` copied from `util.rs` (private in
+Espanso). `core/tests/scripts.rs` has 10 tests: the ones above, plus a thrown error,
+`ignore_error`, `%HOME%`, `node` and `deno`, `%PACKAGES%` and `shell`. The fixture gained
+`;hallo` with `scripts/greet.js`, which runs under Bun too. `EspansoEngine::new` now takes
+the `ScriptRunner`.
+
+- `ScriptRunner.run` returns standard output, error output and success separately
+  instead of a single string, so `ignore_error` can keep the output as Espanso does.
+  An error from `run` means the script couldn't run at all; like Espanso failing to start
+  the program, that fails the snippet even with `ignore_error`.
+- `debug: true` logs through the `log` crate, as Espanso does; nothing shows it until the
+  keyboard installs a logger.
+- `%PACKAGES%` is rejected with an error rather than left in the path.
+
 ## Step 3: Swift package with JavaScriptCore
 
 1. Expose the engine through UniFFI (procedural macros, no separate interface file), with

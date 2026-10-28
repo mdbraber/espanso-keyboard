@@ -6,7 +6,8 @@
 //! middleware it follows.
 
 use std::collections::{HashMap, VecDeque};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Result;
 use espanso_config::matches::{Match, MatchCause, MatchEffect, TextFormat};
@@ -24,6 +25,7 @@ use self_cell::self_cell;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::espanso;
+use crate::script::{ScriptExtension, ScriptRunner};
 
 /// What the keyboard does to the text field for one expansion, or for undoing one.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,13 +83,15 @@ pub struct EspansoEngine {
     undo: Option<UndoRecord>,
     warnings: Vec<String>,
     last_error: Option<String>,
+    config_folder: PathBuf,
+    script_runner: Arc<dyn ScriptRunner>,
 }
 
 impl EspansoEngine {
     /// Loads an Espanso folder (the one containing `config/` and `match/`) using the
     /// default configuration. App-specific configurations are ignored: a keyboard can't
-    /// see which app it is in.
-    pub fn new(config_folder: &Path) -> Result<Self> {
+    /// see which app it is in. `script_runner` runs the `.js` files of `script` variables.
+    pub fn new(config_folder: &Path, script_runner: Arc<dyn ScriptRunner>) -> Result<Self> {
         let (config_store, match_store, non_fatal_errors) = espanso_config::load(config_folder)?;
         let config = config_store.default();
         let set = match_store.query(config.match_paths());
@@ -147,6 +151,8 @@ impl EspansoEngine {
             undo: None,
             warnings,
             last_error: None,
+            config_folder: config_folder.to_owned(),
+            script_runner,
         })
     }
 
@@ -328,13 +334,15 @@ impl EspansoEngine {
             .ok_or_else(|| anyhow::anyhow!("match has no text"))?;
 
         // Extensions as in espanso/src/cli/worker/engine/mod.rs, minus those that need the
-        // desktop. Scripts arrive in plan step 2, clipboard and choice pickers in step 6.
+        // desktop: no shell, so `shell` variables fail. Clipboard and choice pickers
+        // arrive in plan step 6.
         let locale_provider = DefaultLocaleProvider::new();
         let date = DateExtension::new(&locale_provider);
         let echo = EchoExtension::new();
         let random = RandomExtension::new();
+        let script = ScriptExtension::new(&self.config_folder, &*self.script_runner);
         let choice = ChoiceExtension::new(&NoChoiceSelector);
-        let renderer = espanso_render::create(vec![&date, &echo, &random, &choice]);
+        let renderer = espanso_render::create(vec![&date, &echo, &random, &script, &choice]);
 
         let context = Context {
             global_vars: self.global_vars.iter().collect(),

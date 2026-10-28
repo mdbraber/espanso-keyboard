@@ -34,7 +34,7 @@ matches:
 | Extra arguments | `process.argv[2]`, `process.argv[3]`, … (`argv[0]` is `bun`, `argv[1]` the script path) | Yes |
 | Earlier variables | `process.env.ESPANSO_<NAME>`, for example `process.env.ESPANSO_ROOM`; form fields as `ESPANSO_<FORM>_<FIELD>` | Yes |
 | Configuration folder | `process.env.CONFIG` | Yes |
-| Errors | A thrown error, any `console.error` output, or no result within the time limit means the snippet doesn't expand. `ignore_error: true` on the variable keeps the result despite error output, as in Espanso | Yes |
+| Errors | A thrown error, any `console.error` output, or no result within the time limit means the snippet doesn't expand. `ignore_error: true` on the variable keeps the result despite a thrown error or error output, as in Espanso, but not when the script couldn't run at all (missing file, time limit) | Yes |
 
 Espanso decides these rules in `espanso-render/src/extension/script.rs`; the keyboard
 copies them.

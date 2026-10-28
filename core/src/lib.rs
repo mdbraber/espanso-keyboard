@@ -1,14 +1,17 @@
 //! Espanso snippet expansion for an iPhone keyboard extension.
 //!
 //! [`EspansoEngine`] turns typed characters into expansions with Espanso's own config,
-//! match and render libraries. Scripts and the Swift interface follow in docs/plan.md.
+//! match and render libraries. `script` variables run through a host-supplied
+//! [`ScriptRunner`]. The Swift interface follows in docs/plan.md.
 
 mod engine;
 mod espanso;
+mod script;
 
 use std::path::Path;
 
 pub use engine::{EspansoEngine, Expansion, SnippetSummary};
+pub use script::{ScriptOutput, ScriptRunner};
 
 use anyhow::Result;
 

@@ -57,9 +57,19 @@ struct Expansion {
 }
 
 protocol ScriptRunner {         // implemented in Swift with JavaScriptCore
-    func run(scriptPath: String, argv: [String], env: [String: String]) throws -> String
+    // Throws only when the script can't run at all (missing file, time limit).
+    func run(scriptPath: String, argv: [String], env: [String: String]) throws -> ScriptOutput
+}
+
+struct ScriptOutput {
+    let stdout: String          // console.log output
+    let stderr: String          // console.error output and an uncaught error's message
+    let success: Bool           // false after an uncaught error
 }
 ```
+
+`run` returns standard output and error output separately because `ignore_error: true`
+keeps standard output even when there was error output, as in Espanso.
 
 The keyboard inserts each typed character first and then calls `type`. It calls
 `backspace` before deleting; if that returns an expansion, the keyboard applies it instead
