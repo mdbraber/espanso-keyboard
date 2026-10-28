@@ -1,0 +1,142 @@
+#!/bin/bash
+# Runs on the Mac. Headless simulator helpers for screenshots and keyboard checks.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+RUNTIME=${RUNTIME:-$(xcrun simctl list runtimes -j | /usr/bin/python3 -c "
+import json, sys
+print([r['identifier'] for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS' and r['isAvailable']
+       and any(d['name'] == 'iPhone 17' for d in r['supportedDeviceTypes'])][-1])")}
+APP=build/Build/Products/Debug-iphonesimulator/Hex.app
+BUNDLE=com.shahidy.hexkeyboard
+
+udid() {
+  xcrun simctl list devices -j | /usr/bin/python3 -c "
+import json, sys
+name, runtime = sys.argv[1], sys.argv[2]
+for d in json.load(sys.stdin)['devices'].get(runtime, []):
+    if d['name'] == name and d['isAvailable']: print(d['udid']); break" "$1" "$RUNTIME"
+}
+
+ensure() {
+  local name="hexkb $1" type="com.apple.CoreSimulator.SimDeviceType.$2" id
+  id=$(udid "$name")
+  [ -n "$id" ] || id=$(xcrun simctl create "$name" "$type" "$RUNTIME")
+  echo "$id"
+}
+
+boot() {
+  xcrun simctl bootstatus "$1" -b >/dev/null
+  xcrun simctl spawn "$1" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+  xcrun simctl install "$1" "$APP"
+}
+
+use() {
+  local id=$1 keyboards
+  case $2 in
+    hex) keyboards=("com.shahidy.hexkeyboard.keyboard" "en_US@sw=QWERTY;hw=Automatic") ;;
+    system) keyboards=("en_US@sw=QWERTY;hw=Automatic") ;;
+  esac
+  local current expanded
+  current=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboards 2>/dev/null | sed '1d;$d' | tr -d ' ",\n' || true)
+  expanded=$(xcrun simctl spawn "$id" defaults read .GlobalPreferences AppleKeyboardsExpanded 2>/dev/null || true)
+  [ "$current" = "$(printf %s "${keyboards[@]}")" ] && [ "$expanded" = 1 ] && return
+  xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboards -array "${keyboards[@]}"
+  xcrun simctl spawn "$id" defaults write .GlobalPreferences AppleKeyboardsExpanded -int 1
+  xcrun simctl shutdown "$id"
+  boot "$id"
+}
+
+shoot() {
+  local id=$1 keyboard=$2 appearance=$3 out=$4; shift 4
+  xcrun simctl ui "$id" appearance "$appearance"
+  xcrun simctl terminate "$id" "$BUNDLE" 2>/dev/null || true
+  use "$id" "$keyboard"
+  local attempt orientation=(-HexOrientation portrait)
+  [[ " $* " == *HexOrientation* ]] && orientation=()
+  for attempt in 1 2 3 4 5; do
+    xcrun simctl launch "$id" "$BUNDLE" -HexFocus YES ${orientation[@]+"${orientation[@]}"} "$@" >/dev/null 2>&1 && break
+    [ "$attempt" = 3 ] && xcrun simctl install "$id" "$APP"
+    sleep 2
+  done
+  sleep "${SETTLE:-3}"
+  mkdir -p "$(dirname "$out")"
+  xcrun simctl io "$id" screenshot "$out" >/dev/null 2>&1
+}
+
+all() {
+  local tag=$1; shift
+  for spec in "iPhone 17:iPhone-17" "iPhone 17 Pro Max:iPhone-17-Pro-Max" "iPhone 16e:iPhone-16e" "iPhone Air:iPhone-Air" \
+              "iPad Pro 11:iPad-Pro-11-inch-M5-12GB" "iPad Pro 13:iPad-Pro-13-inch-M5-12GB" "iPad A16:iPad-A16" "iPad mini:iPad-mini-A17-Pro"; do
+    local name=${spec%%:*} id slug
+    [ -n "${ONLY:-}" ] && [[ "$name" != *$ONLY* ]] && continue
+    slug=$(echo "$name" | tr 'A-Z ' 'a-z-')
+    id=$(ensure "$name" "${spec##*:}")
+    boot "$id"
+    for keyboard in ${KEYBOARDS:-system hex}; do
+      for appearance in light dark; do
+        shoot "$id" "$keyboard" "$appearance" "shots/raw/$slug-$tag-$keyboard-$appearance.png" "$@"
+      done
+    done
+    [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+  done
+}
+
+variants() {
+  local name=$1 tag=$2 id slug
+  id=$(udid "hexkb $name")
+  slug=$(echo "$name" | tr 'A-Z ' 'a-z-')
+  boot "$id"
+  for keyboard in ${KEYBOARDS:-system hex}; do
+    while read -r variant args; do
+      shoot "$id" "$keyboard" "${APPEARANCE:-light}" "shots/raw/$slug-$tag-$variant-$keyboard.png" $args
+    done <<VARIANTS
+return-go -HexReturnKey 1
+return-search -HexReturnKey 6
+return-send -HexReturnKey 7
+return-done -HexReturnKey 9
+return-next -HexReturnKey 4
+type-email -HexKeyboardType 7
+type-url -HexKeyboardType 3
+type-numbers -HexKeyboardType 2
+type-websearch -HexKeyboardType 10
+landscape -HexOrientation landscape
+VARIANTS
+  done
+  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+}
+
+# Screenshots the app's Your Taps screen showing a touch model (JSON, as the keyboard shares it), light and dark:
+# Heat, Aim and Accuracy, each alone and with KEY selected (Heat's scrolled to the key's close-up), and the
+# thumbs and most-missed sections at the bottom.
+taps() {
+  local name=$1 type=$2 touches=$3 tag=$4 id slug group attempt
+  id=$(ensure "$name" "$type")
+  slug=$(echo "$name" | tr 'A-Z ' 'a-z-')
+  boot "$id"
+  group=$(xcrun simctl get_app_container "$id" "$BUNDLE" group.com.shahidy.hexkeyboard)
+  cp "$touches" "$group/touches.json"
+  for appearance in light dark; do
+    xcrun simctl ui "$id" appearance "$appearance"
+    while read -r variant args; do
+      xcrun simctl terminate "$id" "$BUNDLE" 2>/dev/null || true
+      for attempt in 1 2 3; do
+        xcrun simctl launch "$id" "$BUNDLE" -HexTaps YES $args >/dev/null 2>&1 && break
+        sleep 2
+      done
+      sleep "${SETTLE:-3}"
+      xcrun simctl io "$id" screenshot "shots/raw/$slug-$tag-taps-$variant-$appearance.png" >/dev/null 2>&1
+    done <<VARIANTS
+heat
+heat-key -HexTapsKey ${KEY:-p} -HexTapsScroll detail
+aim -HexTapsMode aim
+aim-key -HexTapsMode aim -HexTapsKey ${KEY:-p}
+accuracy -HexTapsMode accuracy
+accuracy-key -HexTapsMode accuracy -HexTapsKey ${KEY:-p}
+thumbs -HexTapsScroll bottom
+VARIANTS
+  done
+  [ -n "${KEEP:-}" ] || xcrun simctl shutdown "$id"
+}
+
+"$@"

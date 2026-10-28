@@ -1,0 +1,8 @@
+#!/bin/sh
+# Syncs the tree to its own folder on the Mac, so checkouts side by side don't overwrite each other, and prints it.
+set -e
+cd "$(dirname "$0")/.."
+name=$(basename "$PWD")
+[ "$name" = hex-keyboard ] && dir=Developer/hex-keyboard || dir=Developer/hex-keyboard-$name
+rsync -az --delete --exclude .git --exclude /build --exclude /shots --exclude '*.xcodeproj' --exclude /reference --exclude /App/Info.plist --exclude /Keyboard/Info.plist --exclude /Config/Team.xcconfig ./ "mac:$dir/"
+echo "$dir"

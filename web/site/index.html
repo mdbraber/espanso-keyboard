@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A keyboard that feels like Apple's, and learns where you tap. Type with its real engine right here.">
+<meta property="og:title" content="Hex Keyboard">
+<meta property="og:description" content="A keyboard that feels like Apple's, and learns where you tap. Type with its real engine right here.">
+<meta property="og:url" content="https://hex-keyboard.vercel.app">
+<title>Hex Keyboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='20' rx='5' fill='%23e2e4e8'/%3E%3Crect x='6' y='10' width='5' height='5' rx='1.5' fill='%23fff'/%3E%3Crect x='13.5' y='10' width='5' height='5' rx='1.5' fill='%23fff'/%3E%3Crect x='21' y='10' width='5' height='5' rx='1.5' fill='%23fff'/%3E%3Crect x='9' y='18' width='14' height='4' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="stage">
+  <main class="screen" id="screen">
+    <header class="nav">
+      <h1>Hex</h1>
+      <button class="glass" id="open-settings" aria-label="Keyboard settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    </header>
+    <textarea id="field" inputmode="none" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Text" placeholder="Type here. Hex learns where you tap."></textarea>
+    <section class="keyboard" id="keyboard" aria-label="Hex keyboard">
+      <div class="bar" id="bar"></div>
+      <div class="keys" id="keys"></div>
+      <div class="system" aria-hidden="true"><span class="globe"></span><span class="mic"></span></div>
+      <p class="status" id="status">Loading the typing engine…</p>
+    </section>
+    <div class="settings" id="settings">
+      <div class="scrim"></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <header class="nav">
+          <h2 id="settings-title">Keyboards</h2>
+          <button class="glass done" aria-label="Done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></button>
+        </header>
+        <div class="sections"></div>
+      </div>
+    </div>
+  </main>
+  <p class="about">Hex is an open-source iPhone keyboard that feels like Apple's and learns where you tap. This page runs its real typing engine, so the autocorrect and the learning are the same as on the phone. <a href="https://github.com/AVGVSTVS96/hex-keyboard">GitHub</a> · MIT</p>
+</div>
+</body>
+</html>

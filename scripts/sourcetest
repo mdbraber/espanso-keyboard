@@ -1,0 +1,28 @@
+#!/bin/bash
+# Runs on the Mac. A source through the real keyboard, with scripts/source.py standing in for it; prints what it was
+# sent: scripts/sourcetest ["iPhone 17"] [iPhone-17]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+NAME=${1:-iPhone 17}
+TYPE=${2:-iPhone-17}
+PORT=${PORT:-2599}
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+scripts/sim boot "$ID"
+scripts/sim use "$ID" hex
+slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
+mkdir -p shots/raw/source build/uitest
+xcodegen generate -q
+xcodebuild build-for-testing -project HexKeyboard.xcodeproj -scheme Hex -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet 2>&1 | grep -E "error" || true
+xcrun simctl install "$ID" build/uitest/Build/Products/Debug-iphonesimulator/Hex.app
+log=build/uitest/source.jsonl
+: > "$log"
+/usr/bin/python3 scripts/source.py "$PORT" "$log" &
+source=$!
+trap 'kill $source 2>/dev/null || true' EXIT
+TEST_RUNNER_HEX_SOURCE="http://localhost:$PORT/hex" TEST_RUNNER_HEX_SHOTS="$PWD/shots/raw/source/$slug" \
+  xcodebuild test-without-building -project HexKeyboard.xcodeproj -scheme Hex -destination "id=$ID" \
+  -derivedDataPath build/uitest -only-testing:HexUITests/SourceTests > build/uitest/source.log 2>&1 || true
+grep -E "error:|XCTAssert|Test Case .*(passed|failed)|Executed" build/uitest/source.log || true
+cat "$log"
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs on the Mac. Runs the KeyboardCore tests on an iOS simulator.
+set -e
+cd "$(dirname "$0")/../Packages/HexKeyboard"
+ID=$(../../scripts/sim ensure "iPhone 17" iPhone-17)
+xcodebuild test -scheme HexKeyboard-Package -destination "id=$ID" -derivedDataPath ../../build/tests \
+  -skip-testing:KeyboardUITests/Evaluation 2>&1 \
+  | grep -E "error:|✘|Test run with" || true

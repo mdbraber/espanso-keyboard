@@ -1,0 +1,18 @@
+#!/bin/bash
+# Runs on the Mac. Types through a keyboard and screenshots each step: scripts/shots "iPhone 17" iPhone-17 system light [steps]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+NAME=$1 TYPE=$2 KEYBOARD=$3 APPEARANCE=$4
+ID=$(scripts/sim ensure "$NAME" "$TYPE")
+scripts/sim boot "$ID"
+scripts/sim use "$ID" "$KEYBOARD"
+xcrun simctl ui "$ID" appearance "$APPEARANCE"
+slug=$(echo "$NAME" | tr 'A-Z ' 'a-z-')
+mkdir -p shots/raw/suggestions
+xcodegen generate -q
+xcodebuild build-for-testing -project HexKeyboard.xcodeproj -scheme Hex -destination "id=$ID" \
+  -derivedDataPath build/uitest -quiet 2>&1 | grep -E "error" || true
+TEST_RUNNER_HEX_SHOTS="$PWD/shots/raw/suggestions/$slug-$KEYBOARD-$APPEARANCE" TEST_RUNNER_HEX_STEPS="${5:-}" \
+  xcodebuild test-without-building -project HexKeyboard.xcodeproj -scheme Hex -destination "id=$ID" \
+  -derivedDataPath build/uitest -only-testing:HexUITests/SuggestionShots 2>&1 | grep -E "error:|failed|Executed" || true
+[ -n "${KEEP:-}" ] || xcrun simctl shutdown "$ID"

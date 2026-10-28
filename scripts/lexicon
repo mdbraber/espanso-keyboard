@@ -1,0 +1,9 @@
+#!/bin/sh
+# Rebuilds Packages/HexKeyboard/Sources/KeyboardUI/Resources/en.lexicon (see scripts/lexicon.py for the sources).
+set -e
+cd "$(dirname "$0")/.."
+uv run --no-project python3 scripts/lexicon.py build/lexicon > build/lexicon/words.tsv
+scripts/sync
+rsync -a build/lexicon/words.tsv mac:Developer/hex-keyboard/build/lexicon/
+ssh mac "cd ~/Developer/hex-keyboard/Packages/HexKeyboard && swift run -c release LexiconBuilder ../../build/lexicon/words.tsv Sources/KeyboardUI/Resources/en.lexicon"
+rsync -a mac:Developer/hex-keyboard/Packages/HexKeyboard/Sources/KeyboardUI/Resources/en.lexicon Packages/HexKeyboard/Sources/KeyboardUI/Resources/

@@ -1,0 +1,2 @@
+// Device builds sign with the team in Team.xcconfig, which stays out of git: DEVELOPMENT_TEAM = <your team ID>
+#include? "Team.xcconfig"

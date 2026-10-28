@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs on the Mac. Generates the project and builds for the simulator.
+set -e
+cd "$(dirname "$0")/.."
+xcodegen generate -q
+xcodebuild -project HexKeyboard.xcodeproj -scheme Hex -sdk iphonesimulator -configuration Debug \
+  -derivedDataPath build -quiet build 2>&1 | grep -E "error|warning: " | grep -v "appintentsmetadataprocessor" || true
+test -d build/Build/Products/Debug-iphonesimulator/Hex.app/PlugIns/Keyboard.appex
