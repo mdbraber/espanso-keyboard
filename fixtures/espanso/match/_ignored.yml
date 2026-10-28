@@ -1,0 +1,5 @@
+# Espanso skips match files whose names start with "_" unless another file imports
+# them. The keyboard must behave the same; core/tests/load_fixture.rs checks it.
+matches:
+  - trigger: ";ignored"
+    replace: "this should never expand"

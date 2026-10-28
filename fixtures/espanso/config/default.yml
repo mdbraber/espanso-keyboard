@@ -1,0 +1,2 @@
+# Test fixture: an Espanso configuration folder as the keyboard will receive it.
+undo_backspace: true

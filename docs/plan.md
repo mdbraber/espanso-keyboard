@@ -1,0 +1,150 @@
+# Plan
+
+Steps in order. Each ends with a check that shows it's done. Steps 1 to 3 need no iPhone
+and no signing, so they can run entirely in gloob.
+
+## Step 0: Environment
+
+Follow [build-on-gloob.md](build-on-gloob.md), "One-time setup" and "Check the setup".
+
+Then confirm the Simulator works inside gloob: create any iOS app template with Xcode,
+build it for the Simulator and launch it with `xcrun simctl`. If the Simulator doesn't
+run in the virtual machine, record that in this file. Steps 1 to 3 don't need it;
+steps 3 (Swift tests) and 4 onwards would then run their Simulator checks on the Mac.
+
+**Done when:** `scripts/check-ios.sh` passes, `bun fixtures/espanso/scripts/jitsi.js`
+prints a room name, and the Simulator question is answered.
+
+## Step 1: Expansion engine in Rust
+
+In `core/`, build the engine that turns typed characters into expansions, using Espanso's
+libraries. No JavaScript yet; script variables return an error.
+
+1. **Load:** `espanso_config::load` (already used in `core/src/lib.rs`). Use the default
+   configuration's match paths; keyboards can't see which app they're in, so app-specific
+   configurations are ignored.
+2. **Match:** build an `espanso_match::rolling::matcher::RollingMatcher` from the loaded
+   matches. Espanso's own conversion from config matches to matcher input is in the
+   Espanso repository at `espanso/src/cli/worker/engine/process/middleware/matcher/`
+   (`convert.rs`, `rolling.rs`); copy and adapt it. Feed each typed character as
+   `Event::Key { key: Key::Other, chars: Some(..) }`, and use `Event::VirtualSeparator`
+   from `reset()`. Respect `word: true`, `left_word`, `right_word`,
+   `propagate_case` and the configuration's `word_separators`.
+3. **Render:** create a renderer with `espanso_render::create`, with the date, echo,
+   random and choice extensions. Converting matches into renderer templates is also done
+   in the Espanso repository, in `espanso/src/cli/worker/engine/process/middleware/render/`;
+   copy and adapt it. Nested matches and global variables come along with that code.
+4. **Expansion result:** delete count (the trigger's length in characters as the text
+   field counts them; test with emoji and accented letters), the text to insert, and the
+   cursor offset for `$|$`.
+5. **Undo:** when `undo_backspace` is on and the very next key after an expansion is
+   backspace, return an expansion that removes the inserted text and puts the trigger back.
+6. **Interface:** the `EspansoEngine` from [architecture.md](architecture.md), still as a
+   plain Rust API.
+
+**Tests** (in `core/tests/`, using `fixtures/espanso/`, extended as needed):
+- `;today` expands to today's date.
+- A `word: true` trigger only fires between word separators.
+- `$|$` gives the right cursor offset.
+- Backspace after an expansion restores the trigger; any other key first means it doesn't.
+- `reset()` mid-trigger stops the trigger from firing.
+- Matches from `_` files are skipped unless imported, and imported ones work.
+- Triggers containing non-ASCII characters give the right delete count.
+
+**Done when:** these tests pass and `scripts/check-ios.sh` still passes.
+
+## Step 2: Script variables in Rust
+
+1. Add a replacement `script` extension in `core/` that follows
+   [script-contract.md](script-contract.md): checks the arguments, fills in `%CONFIG%` and
+   `%HOME%`, builds `argv` and `env` (reuse the `ESPANSO_<NAME>` conversion from
+   `espanso-render/src/extension/util.rs`), calls a `ScriptRunner` supplied by the host,
+   and applies `trim`, `ignore_error` and `debug` the way Espanso's
+   `espanso-render/src/extension/script.rs` does.
+2. Register it instead of Espanso's script extension. Leave Espanso's `shell` extension
+   out, so `shell` variables fail cleanly.
+
+**Tests:** with a test `ScriptRunner` in Rust: the `;jitsi` fixture calls it with
+`argv == ["bun", "<fixture>/scripts/jitsi.js", "10"]`; earlier variables appear in `env`;
+error output fails the snippet unless `ignore_error: true`; `trim: false` keeps whitespace;
+`[bash, x.sh]` and `[bun, x.ts]` are rejected.
+
+**Done when:** these tests pass.
+
+## Step 3: Swift package with JavaScriptCore
+
+1. Expose the engine through UniFFI (procedural macros, no separate interface file), with
+   `ScriptRunner` as a callback interface.
+2. Add `scripts/build-xcframework.sh`: builds the core for `aarch64-apple-ios` and
+   `aarch64-apple-ios-sim`, generates the Swift bindings, and assembles
+   `EspansoKeyboardCore.xcframework`.
+3. Add a Swift package in `swift/EspansoKeyboardCore/` that wraps the XCFramework and the
+   generated Swift file, plus a `JavaScriptCoreScriptRunner`: loads the file, sets up
+   `process.argv`, `process.env` and `console`, runs the script in a fresh `JSContext` on
+   a background queue, and stops waiting after about one second.
+4. Measure: the size the core adds to a linked app (the static library is about 27 MB
+   before linking; most of that should be stripped), and the memory used after `load` with
+   the fixture and with the owner's real Espanso folder.
+
+**Tests** (Swift, in the Simulator): the fixture's `;jitsi` expands to
+`https://meet.jit.si/mdb-` plus 10 characters; a script that loops forever fails the
+snippet within about one second without blocking the test; `console.error` fails the
+snippet.
+
+**Done when:** these tests pass and the size and memory numbers are written into this
+file. If memory after loading is above about 30 MB, stop and discuss before step 4.
+
+## Step 4: Keyboard
+
+1. Bring Hex into `app/` with `git subtree add --prefix app
+   https://github.com/AVGVSTVS96/hex-keyboard.git main --squash`, so upstream changes can
+   be pulled later with `git subtree pull`.
+2. Hex keeps its signing settings in `app/Config/Signing.xcconfig` and its identifiers
+   (`com.shahidy.hexkeyboard` and its app group) in the project and in
+   `app/App/Hex.entitlements` and `app/Keyboard/Keyboard.entitlements`. Make all of these
+   come from `Config/Local.xcconfig`, which is not committed, with a committed
+   `Config/Local.xcconfig.example`. Do this only after the owner has chosen how builds
+   reach the iPhone ([build-on-gloob.md](build-on-gloob.md)).
+3. Install it on the iPhone unchanged and have the owner type with it for a day,
+   including Dutch. **Stop here if the owner isn't happy with the typing.** Reconsider
+   the host keyboard (see [decisions.md](decisions.md)) before going further.
+4. Add the `EspansoKeyboardCore` package to the keyboard target and connect it where Hex
+   inserts text: pass each typed character to `type`, apply returned expansions through
+   `textDocumentProxy` (`deleteBackward` repeated, `insertText`,
+   `adjustTextPosition(byCharacterOffset:)` for the cursor), pass backspace to `backspace`,
+   and call `reset` from `textDidChange`, `selectionDidChange` and when the keyboard
+   appears.
+5. Temporarily load the snippets bundled into the keyboard from `fixtures/espanso/`.
+
+**Done when:** in the Simulator and on the iPhone, typing `;jitsi` in Notes and in a
+Fantastical event gives a new meeting link each time, `;today` gives the date, and normal
+typing and autocorrect feel unchanged.
+
+## Step 5: Companion app import
+
+1. In the Hex app, add a screen to pick the Espanso folder from iCloud Drive with a folder
+   picker, remembered as a security-scoped bookmark.
+2. On app launch and on "Reload", copy `config/`, `match/` and `scripts/` from it into the
+   app group storage, replacing the previous copy in one step (copy to a new folder, then
+   swap), so the keyboard never sees half a copy. Show Espanso's loading warnings.
+3. The keyboard loads from the app group copy instead of the bundled fixtures and reloads
+   when the copy changes (check the folder's modification date when the keyboard appears).
+
+**Done when:** a snippet added on the Mac in Espanso's folder works on the iPhone after
+opening the app, and also still works in Espanso on the Mac.
+
+## Step 6: Later
+
+In whatever order is useful:
+- `clipboard` variables through `UIPasteboard`.
+- Regex triggers (`espanso_match::regex`).
+- Forms and `choice` variables, shown in the keyboard's own panel.
+- Matching snippets in Hex's suggestion bar, using `search`.
+- `import` between script files (a JavaScriptCore module loader limited to `scripts/`).
+
+## Updating Espanso
+
+The three Espanso libraries are pinned to one commit in `core/Cargo.toml`. To update:
+change all three `rev` values together, run `cargo update -p espanso-config
+-p espanso-match -p espanso-render`, compare the copied code from steps 1 and 2 with its
+new upstream version, and run `scripts/check-ios.sh` plus the Swift tests.

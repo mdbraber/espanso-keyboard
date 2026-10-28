@@ -1,0 +1,10 @@
+/core/target/
+/build/
+*.xcframework
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# Signing and identifiers stay local (docs/build-on-gloob.md)
+Config/Local.xcconfig

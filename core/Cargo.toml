@@ -1,0 +1,25 @@
+[package]
+name = "espanso-keyboard-core"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Espanso snippet expansion for an iPhone keyboard extension"
+publish = false
+
+[lib]
+name = "espanso_keyboard_core"
+crate-type = ["staticlib", "rlib"]
+
+# Espanso's own libraries, pinned to one upstream commit so updates are deliberate.
+# Bump all three together; see docs/plan.md, "Updating Espanso".
+[dependencies]
+espanso-config = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
+espanso-match = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
+espanso-render = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
+anyhow = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

@@ -1,0 +1,18 @@
+matches:
+  - trigger: ";today"
+    replace: "{{today}}"
+    vars:
+      - name: today
+        type: date
+        params:
+          format: "%Y-%m-%d"
+
+  # Runs scripts/jitsi.js: with Bun under Espanso on the Mac, with JavaScriptCore
+  # in the keyboard on the iPhone. See docs/script-contract.md.
+  - trigger: ";jitsi"
+    replace: "https://meet.jit.si/mdb-{{room}}"
+    vars:
+      - name: room
+        type: script
+        params:
+          args: [bun, "%CONFIG%/scripts/jitsi.js", "10"]
