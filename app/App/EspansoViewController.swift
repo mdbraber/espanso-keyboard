@@ -11,6 +11,12 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
     private var failure: String?
     private var copying = false
 
+    /// The last copy in one line, for the Espanso section in Keyboard Settings.
+    static var summary: String {
+        guard let summary = EspansoImport.lastSummary else { return "Hex types your Espanso snippets. Choose the folder you sync through iCloud Drive." }
+        return "\(summary.snippets) snippets, copied \(summary.date.formatted(date: .abbreviated, time: .shortened))."
+    }
+
     init() {
         super.init(style: .insetGrouped)
         title = "Espanso Snippets"

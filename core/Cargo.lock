@@ -288,6 +288,7 @@ dependencies = [
  "espanso-match",
  "espanso-render",
  "log",
+ "regex",
  "self_cell",
  "thiserror 2.0.21",
  "unicode-segmentation",

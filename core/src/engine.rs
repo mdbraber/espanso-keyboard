@@ -12,6 +12,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use espanso_config::matches::{Match, MatchCause, MatchEffect, TextFormat};
 use espanso_match::event::{Event, Key};
+use espanso_match::regex::{RegexMatcher, RegexMatcherOptions, RegexMatcherState};
 use espanso_match::rolling::matcher::{RollingMatcher, RollingMatcherOptions, RollingMatcherState};
 use espanso_match::{MatchResult, Matcher};
 use espanso_render::extension::choice::{
@@ -47,12 +48,19 @@ pub struct SnippetSummary {
     pub label: String,
 }
 
-type History<'a> = VecDeque<RollingMatcherState<'a, i32>>;
+/// Espanso's two matchers, which see every key (espanso/src/cli/worker/engine/mod.rs).
+struct Matchers {
+    rolling: RollingMatcher<i32>,
+    regex: RegexMatcher<i32>,
+}
+
+/// The matchers' states after each recent key, newest last.
+type History<'a> = VecDeque<(RollingMatcherState<'a, i32>, RegexMatcherState)>;
 
 self_cell!(
-    /// The matcher and Espanso's matcher state history, which borrows from it.
+    /// The matchers and Espanso's matcher state history, which borrows from them.
     struct MatcherCell {
-        owner: RollingMatcher<i32>,
+        owner: Matchers,
         #[covariant]
         dependent: History,
     }
@@ -112,11 +120,11 @@ impl EspansoEngine {
             if let Some(warning) = unsupported(m) {
                 warnings.push(warning);
             }
+            // Espanso only logs a regex it can't compile, and leaves it out.
             if let MatchCause::Regex(cause) = &m.cause {
-                warnings.push(format!(
-                    "{}: regex triggers aren't supported yet",
-                    cause.regex
-                ));
+                if let Err(err) = regex::Regex::new(&cause.regex) {
+                    warnings.push(format!("{}: invalid regex: {err}", cause.regex));
+                }
             }
             if let Some(template) = espanso::convert_to_template(m) {
                 template_index.insert(m.id, templates.len());
@@ -131,7 +139,8 @@ impl EspansoEngine {
             .map(|v| espanso::convert_var((*v).clone()))
             .collect();
 
-        // From espanso/src/cli/worker/engine/process/middleware/matcher/rolling.rs.
+        // From espanso/src/cli/worker/engine/process/middleware/matcher/rolling.rs and
+        // regex.rs.
         let rolling = RollingMatcher::new(
             &espanso::rolling_matches(&set.matches),
             RollingMatcherOptions {
@@ -139,9 +148,15 @@ impl EspansoEngine {
                 key_word_separators: vec![],
             },
         );
+        let regex = RegexMatcher::new(
+            &espanso::regex_matches(&set.matches),
+            RegexMatcherOptions {
+                max_buffer_size: config.max_regex_buffer_size(),
+            },
+        );
 
         Ok(Self {
-            matcher: MatcherCell::new(rolling, |_| VecDeque::new()),
+            matcher: MatcherCell::new(Matchers { rolling, regex }, |_| VecDeque::new()),
             matches,
             templates,
             template_index,
@@ -221,7 +236,7 @@ impl EspansoEngine {
         matches.sort_by_key(|m| m.id);
         matches
             .into_iter()
-            .filter(|m| matches!(m.cause, MatchCause::Trigger(_)))
+            .filter(|m| !matches!(m.cause, MatchCause::None))
             .filter(|m| {
                 query.is_empty()
                     || m.description().to_lowercase().contains(&query)
@@ -230,12 +245,10 @@ impl EspansoEngine {
                         .any(|t| t.to_lowercase().contains(&query))
             })
             .map(|m| SnippetSummary {
-                triggers: m
-                    .cause
-                    .search_terms()
-                    .iter()
-                    .map(|t| t.to_string())
-                    .collect(),
+                triggers: match &m.cause {
+                    MatchCause::Regex(cause) => vec![cause.regex.clone()],
+                    cause => cause.search_terms().iter().map(|t| t.to_string()).collect(),
+                },
                 label: m.description().to_string(),
             })
             .collect()
@@ -252,12 +265,18 @@ impl EspansoEngine {
         self.last_error.as_deref()
     }
 
-    /// matcher.rs: feeds one event and keeps up to `backspace_limit` states for backspace.
+    /// matcher.rs: feeds one event to both matchers and keeps up to `backspace_limit`
+    /// states for backspace. Trigger matches come before regex matches, as in Espanso.
     fn feed(&mut self, event: Event) -> Vec<MatchResult<i32>> {
         let max_history_size = self.max_history_size;
-        self.matcher.with_dependent_mut(|matcher, history| {
-            let (state, results) = matcher.process(history.back(), event);
-            history.push_back(state);
+        self.matcher.with_dependent_mut(|matchers, history| {
+            let previous = history.back();
+            let (rolling, mut results) = matchers
+                .rolling
+                .process(previous.map(|s| &s.0), event.clone());
+            let (regex, regex_results) = matchers.regex.process(previous.map(|s| &s.1), event);
+            results.extend(regex_results);
+            history.push_back((rolling, regex));
             if history.len() > max_history_size {
                 history.pop_front();
             }
@@ -272,7 +291,7 @@ impl EspansoEngine {
         // Several matches with the same trigger: Espanso asks which one; the keyboard has
         // no picker yet and takes the first.
         self.last_error = None;
-        let body = match self.render(result.id, &result.trigger) {
+        let body = match self.render(result.id, &result.trigger, result.vars) {
             Ok(Some(body)) => body,
             Ok(None) => return None,
             Err(err) => {
@@ -319,9 +338,15 @@ impl EspansoEngine {
         Some(expansion)
     }
 
-    /// render/mod.rs (`RendererAdapter::render`). `Ok(None)` means the snippet was
-    /// cancelled, for example a choice with nothing chosen.
-    fn render(&self, id: i32, trigger: &str) -> Result<Option<String>> {
+    /// render/mod.rs (`RendererAdapter::render`). `trigger_vars` are a regex trigger's
+    /// named groups. `Ok(None)` means the snippet was cancelled, for example a choice with
+    /// nothing chosen.
+    fn render(
+        &self,
+        id: i32,
+        trigger: &str,
+        trigger_vars: HashMap<String, String>,
+    ) -> Result<Option<String>> {
         let m = self
             .matches
             .get(&id)
@@ -353,6 +378,9 @@ impl EspansoEngine {
         let options = RenderOptions {
             casing_style: espanso::casing_style(m, trigger),
         };
+
+        let augmented = espanso::augment_template(template, trigger_vars);
+        let template = augmented.as_ref().unwrap_or(template);
 
         match renderer.render(template, &context, &options) {
             RenderResult::Success(body) => Ok(Some(body)),

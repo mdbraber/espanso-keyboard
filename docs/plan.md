@@ -312,7 +312,8 @@ opening the app, and also still works in Espanso on the Mac.
 **Progress (2026-10-28):** items 1 to 3 built; the "Done when" check needs the owner's
 folder on the iPhone.
 
-- Hex's home screen has an "Espanso Snippets" row opening `EspansoViewController`: pick
+- Keyboard Settings has an "Espanso" section, above "Sources" (owner's choice), opening
+  `EspansoViewController`: pick
   the folder (document picker for folders, kept as a bookmark), Reload, the number of
   snippets and when they were copied, and Espanso's warnings.
 - `EspansoImport` (`app/App/`) copies `config/`, `match/` and `scripts/` file by file
@@ -338,7 +339,13 @@ folder on the iPhone.
 
 In whatever order is useful:
 - `clipboard` variables through `UIPasteboard`.
-- Regex triggers (`espanso_match::regex`).
+- ~~Regex triggers (`espanso_match::regex`).~~ Done 2026-10-28, after the owner's first
+  folder turned out to use them: Espanso's regex matcher runs beside the trigger matcher
+  with its states in the same backspace history, trigger matches first; named groups
+  become `echo` variables before the snippet's own, as in Espanso's renderer adapter, so
+  scripts get them as `ESPANSO_<NAME>`. A regex that doesn't compile is a warning (Espanso
+  only logs it). Tests: 6 in `core/tests/engine.rs`, 1 in `scripts.rs`, and
+  `testRegexTriggerUsesItsNamedGroup` through the keyboard.
 - Forms and `choice` variables, shown in the keyboard's own panel.
 - Matching snippets in Hex's suggestion bar, using `search`.
 - `import` between script files (a JavaScriptCore module loader limited to `scripts/`).

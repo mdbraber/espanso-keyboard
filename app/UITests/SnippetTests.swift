@@ -52,13 +52,23 @@ final class SnippetTests: XCTestCase {
         XCTAssertEqual(text, "Ok be right back ")
     }
 
+    func testRegexTriggerUsesItsNamedGroup() {
+        type(";heyAnna!")
+        XCTAssertEqual(text, "Hey Anna!")
+    }
+
     func testOrdinaryTypingIsUnchanged() {
         type("hello world  next")
         XCTAssertEqual(text, "Hello world. Next")
     }
 
     func testTheEspansoScreenShowsTheCopy() throws {
-        app.cells.staticTexts["Espanso Snippets"].firstMatch.tap()
+        app.cells.staticTexts["Keyboard Settings"].firstMatch.tap()
+        let espanso = app.cells.staticTexts["Espanso Snippets"].firstMatch
+        XCTAssertTrue(espanso.waitForExistence(timeout: 5), "Keyboard Settings has an Espanso section")
+        let sources = app.staticTexts["SOURCES"].firstMatch
+        if sources.exists { XCTAssertLessThan(espanso.frame.minY, sources.frame.minY, "Espanso comes before Sources") }
+        espanso.tap()
         let footer = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'snippets, copied'")).firstMatch
         XCTAssertTrue(footer.waitForExistence(timeout: 5), "the screen shows how many snippets were copied")
         XCTAssertTrue(app.staticTexts["espanso"].exists, "the folder's name")
@@ -80,7 +90,12 @@ final class SnippetTests: XCTestCase {
                 tap(needsNumbers ? "numbers" : "letters")
                 onNumbers = needsNumbers
             }
-            tap(name)
+            if character.isUppercase {
+                tap("shift")
+                tap(name.lowercased())
+            } else {
+                tap(name)
+            }
             if character == " " { onNumbers = false }  // Space returns to letters.
         }
     }

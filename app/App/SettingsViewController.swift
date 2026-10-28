@@ -7,6 +7,7 @@ final class SettingsViewController: UITableViewController {
         case toggle(String, WritableKeyPath<KeyboardSettings, Bool>)
         case oneHanded
         case keepMicOn
+        case espanso
         case source(Source)
         case addSource
         case reset
@@ -36,6 +37,7 @@ final class SettingsViewController: UITableViewController {
             .toggle("Predictive Text", \.predictiveText),
         ]),
         Section(title: "Voice", footer: Self.keepMicOnFooter, rows: [.keepMicOn]),
+        Section(title: "Espanso", footer: EspansoViewController.summary, rows: [.espanso]),
         Section(title: "Sources", footer: Self.sourcesFooter, rows: sources.map(Row.source) + [.addSource]),
         Section(footer: "Removes the words and typing habits Hex has learned from you.", rows: [.reset]),
     ] }
@@ -106,6 +108,8 @@ final class SettingsViewController: UITableViewController {
                 SettingsStore.keepMicOn = $0
                 Listener.shared.keepMicOn()
             }, sender: self)
+        case .espanso:
+            return show(EspansoViewController(), sender: self)
         case .addSource:
             tableView.deselectRow(at: indexPath, animated: true)
             return addSource()
@@ -151,6 +155,11 @@ final class SettingsViewController: UITableViewController {
             content.secondaryText = source.url.absoluteString
             content.secondaryTextProperties.color = .secondaryLabel
             cell.accessoryView = nil
+        case .espanso:
+            content.text = "Espanso Snippets"
+            content.secondaryText = EspansoImport.lastSummary?.folderName ?? "Choose Folder…"
+            cell.accessoryView = nil
+            cell.accessoryType = .disclosureIndicator
         case .addSource:
             content.text = "Add Source…"
             content.textProperties.color = .tintColor

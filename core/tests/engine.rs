@@ -225,5 +225,54 @@ fn unsupported_snippets_are_reported() {
         "matches:\n  - trigger: \";md\"\n    markdown: \"**bold**\"\n  - regex: \"x(?P<n>\\\\d)\"\n    replace: \"{{n}}\"\n",
     );
     let engine = EspansoEngine::new(&dir, TestRunner::failing()).unwrap();
-    assert_eq!(engine.warnings().len(), 2, "{:?}", engine.warnings());
+    // Only the markdown snippet: regex triggers are supported.
+    assert_eq!(engine.warnings().len(), 1, "{:?}", engine.warnings());
+    assert!(engine.warnings()[0].contains("markdown"));
+}
+
+#[test]
+fn regex_trigger_expands_with_its_named_groups() {
+    let mut field = Field::new();
+    field.type_keys("x ;heyAnna!");
+    assert_eq!(field.text(), "x Hey Anna!|");
+    assert_eq!(field.expansions[0].delete_count, 9);
+}
+
+#[test]
+fn regex_trigger_does_not_fire_on_a_partial_match() {
+    assert_eq!(Field::new().type_keys(";heyanna!").text(), ";heyanna!|");
+}
+
+#[test]
+fn backspace_after_a_regex_expansion_restores_the_typed_text() {
+    let mut field = Field::new();
+    field.type_keys(";heyBo!");
+    field.backspace();
+    assert_eq!(field.text(), ";heyBo!|");
+}
+
+#[test]
+fn reset_clears_the_regex_buffer() {
+    let mut field = Field::new();
+    field.type_keys(";hey");
+    field.engine.reset();
+    field.type_keys("Bo!");
+    assert_eq!(field.text(), ";heyBo!|");
+}
+
+#[test]
+fn backspace_steps_the_regex_buffer_back() {
+    let mut field = Field::new();
+    field.type_keys(";heyBx");
+    field.backspace();
+    field.type_keys("o!");
+    assert_eq!(field.text(), "Hey Bo!|");
+}
+
+#[test]
+fn invalid_regexes_are_reported() {
+    let dir = tempdir_with_matches("matches:\n  - regex: \"(unclosed\"\n    replace: x\n");
+    let engine = EspansoEngine::new(&dir, TestRunner::failing()).unwrap();
+    assert_eq!(engine.warnings().len(), 1, "{:?}", engine.warnings());
+    assert!(engine.warnings()[0].contains("invalid regex"));
 }

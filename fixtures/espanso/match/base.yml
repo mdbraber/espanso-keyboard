@@ -40,6 +40,17 @@ matches:
         params:
           args: [bun, "%CONFIG%/scripts/greet.js"]
 
+  # Regex triggers: named groups become variables, also for scripts.
+  - regex: ";hey(?P<name>[A-Z][a-z]+)!"
+    replace: "Hey {{name}}!"
+  - regex: ";greet(?P<who>[A-Z][a-z]+)\\."
+    replace: "{{line}}"
+    vars:
+      - name: line
+        type: script
+        params:
+          args: [bun, "%CONFIG%/scripts/greet.js"]
+
   # Only between word separators.
   - trigger: "brb"
     replace: "be right back"

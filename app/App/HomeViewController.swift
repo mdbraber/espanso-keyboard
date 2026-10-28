@@ -2,7 +2,7 @@ import UIKit
 
 final class HomeViewController: UITableViewController {
     private enum Row {
-        case status, field, settings, fullAccess, espanso
+        case status, field, settings, fullAccess
     }
 
     private struct Section {
@@ -14,7 +14,7 @@ final class HomeViewController: UITableViewController {
     private let sections = [
         Section(footer: "Hex only goes online to reach the sources you add in Keyboard Settings. Without one, what you type and say stays on this iPhone.", rows: [.status]),
         Section(title: "Try It", rows: [.field]),
-        Section(footer: "Full Access lets Hex play haptics, type what you say, and show you where your taps land.", rows: [.espanso, .settings, .fullAccess]),
+        Section(footer: "Full Access lets Hex play haptics, type what you say, and show you where your taps land.", rows: [.settings, .fullAccess]),
     ]
 
     private let field = UITextView()
@@ -97,7 +97,6 @@ final class HomeViewController: UITableViewController {
         switch row(at: indexPath) {
         case .status, .fullAccess: UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
         case .settings: navigationController?.pushViewController(SettingsViewController(), animated: true)
-        case .espanso: navigationController?.pushViewController(EspansoViewController(), animated: true)
         case .field: break
         }
     }
@@ -110,16 +109,13 @@ final class HomeViewController: UITableViewController {
             let cell = tableView.dequeueReusableCell(withIdentifier: "status", for: indexPath) as! StatusCell
             cell.show(isAdded: isAdded)
             return cell
-        case .settings, .fullAccess, .espanso:
+        case .settings, .fullAccess:
             break
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         var content = UIListContentConfiguration.cell()
         cell.accessoryType = .disclosureIndicator
-        if row(at: indexPath) == .espanso {
-            content.image = UIImage(systemName: "text.insert")
-            content.text = "Espanso Snippets"
-        } else if row(at: indexPath) == .settings {
+        if row(at: indexPath) == .settings {
             content.image = UIImage(systemName: "gearshape")
             content.text = "Keyboard Settings"
         } else {

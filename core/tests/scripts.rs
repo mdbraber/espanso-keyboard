@@ -174,3 +174,15 @@ fn shell_variables_fail_cleanly() {
     assert_eq!(field.text(), ";s|");
     assert!(runner.calls().is_empty());
 }
+
+#[test]
+fn regex_groups_reach_the_script_as_variables() {
+    let runner = TestRunner::printing("Hallo Bo!");
+    let mut field = Field::with(engine_with(runner.clone()));
+    field.type_keys(";greetBo.");
+    assert_eq!(field.text(), "Hallo Bo!|");
+    assert_eq!(
+        runner.calls()[0].env.get("ESPANSO_WHO"),
+        Some(&"Bo".to_string())
+    );
+}

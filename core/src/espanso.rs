@@ -22,8 +22,10 @@
 //! updating Espanso (docs/plan.md, "Updating Espanso").
 
 use espanso_config::matches::{Match, MatchCause, MatchEffect, UpperCasingStyle};
+use espanso_match::regex::RegexMatch;
 use espanso_match::rolling::{RollingMatch, StringMatchOptions};
-use espanso_render::{CasingStyle, Template, Variable};
+use espanso_render::{CasingStyle, Template, Value, Variable};
+use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// From `espanso/src/cli/worker/engine/process/middleware/matcher/convert.rs`
@@ -47,6 +49,46 @@ pub fn rolling_matches(matches: &[&Match]) -> Vec<RollingMatch<i32>> {
         }
     }
     rolling
+}
+
+/// From `espanso/src/cli/worker/engine/process/middleware/matcher/convert.rs`
+/// (`MatchConverter::get_regex_matches`).
+pub fn regex_matches(matches: &[&Match]) -> Vec<RegexMatch<i32>> {
+    let mut regexes = Vec::new();
+    for m in matches {
+        if let MatchCause::Regex(cause) = &m.cause {
+            regexes.push(RegexMatch::new(m.id, &cause.regex));
+        }
+    }
+    regexes
+}
+
+/// From `espanso/src/cli/worker/engine/process/middleware/render/mod.rs`
+/// (`RendererAdapter::render`): a regex trigger's named groups become `echo` variables
+/// placed before the snippet's own.
+pub fn augment_template(
+    template: &Template,
+    trigger_vars: HashMap<String, String>,
+) -> Option<Template> {
+    if trigger_vars.is_empty() {
+        return None;
+    }
+    let mut augmented = template.clone();
+    for (name, value) in trigger_vars {
+        let mut params = espanso_render::Params::new();
+        params.insert("echo".to_string(), Value::String(value));
+        augmented.vars.insert(
+            0,
+            Variable {
+                name,
+                var_type: "echo".to_string(),
+                params,
+                inject_vars: false,
+                ..Default::default()
+            },
+        );
+    }
+    Some(augmented)
 }
 
 /// From `espanso/src/cli/worker/engine/process/middleware/render/mod.rs`.
