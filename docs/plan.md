@@ -392,11 +392,13 @@ snippets (13) were not approved.
   `fixtures/`. `-EspansoImport` (Debug only) also resets the switch, favourites and
   counts.
 - Hex's checks (its `app:verify` skill, run locally instead of over `ssh mac`): package
-  tests pass (10 and 129, including the 3,000-run `TextStateStressTests`).
-- Not tested automatically: Espanso winning over a Text Replacement (needs a Text
-  Replacement in Settings), and a real change through the YAML editor in the UI (the
-  Rust tests cover the text change; typing YAML indentation through Hex's keys runs into
-  its double-space period).
+  tests pass (10 and 129, including the 3,000-run `TextStateStressTests`); `scripts/eval`
+  ends with `EVAL matches eval.expected`; Hex's own UI tests pass (20, one skipped as
+  iPad-only). Hex's `scripts/sim use hex` enables the keyboard under Hex's original
+  bundle ID, so its UI tests run through `scripts/test-keyboard.sh` instead.
+- Not tested automatically: a real change through the YAML editor in the UI (the Rust
+  tests cover the text change; typing YAML indentation through Hex's keys runs into its
+  double-space period).
 
 Earlier list, kept for reference:
 - `clipboard` variables through `UIPasteboard`.
