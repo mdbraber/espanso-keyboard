@@ -77,6 +77,23 @@ time and still works without it, only without stopping the script.
 - **Cost:** non-public API, acceptable as there is no App Store release. Apple could change
   or remove it in any iOS update.
 
+## Snippets can be added and edited on the iPhone
+
+Changed by the owner (2026-10-28). Until then the iPhone only read a copy of the Espanso
+folder. Now Hex may write to the owner's Espanso folder in iCloud Drive:
+
+- New snippets go into one file of their own, `match/iphone.yml`, which Espanso on the
+  Mac loads like any other match file.
+- Existing snippets can be edited in place. Only the lines of that one snippet change;
+  the rest of the file, comments included, stays as it is.
+- The folder on the Mac stays the reference: Hex writes through iCloud Drive and then
+  copies the folder again, as it does when opened.
+
+## Espanso before iOS Text Replacements
+
+Hex also expands the Text Replacements from Settings › General › Keyboard. When a
+trigger completes for both, Espanso's snippet wins (decided by the owner, 2026-10-28).
+
 ## No App Store release
 
 GPL-3.0 and App Store terms conflict. Builds are installed on the owner's own devices

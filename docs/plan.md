@@ -335,9 +335,29 @@ folder on the iPhone.
   device was erased (`xcrun simctl erase`). The first run after that missed one
   expansion, probably first-boot timing; the reruns passed.
 
-## Step 6: Later
+## Step 6: Features
 
-In whatever order is useful:
+Approved by the owner (2026-10-28) from a review of other text expansion keyboards and
+apps (TextExpander, SnipKey, WordBoard, Raycast, Typinator, TypeIt4Me, Text Blaze, aText,
+and the Android apps for Espanso files). Numbers are those of the review; secure
+snippets (13) were not approved.
+
+1. Tap a snippet in the list to copy its result (part of 11).
+2. A switch to turn expansion off.
+3. Forms and `choice` variables, in a panel inside the keyboard.
+4. `clipboard` variables.
+5. Fuzzy search.
+6. Add snippets on the iPhone (`match/iphone.yml`) and edit existing ones in place; see
+   decisions.md.
+7. Matching snippets in Hex's suggestion bar while typing a trigger.
+8. A snippet panel in the keyboard: search and tap to insert.
+9. Favourites, first in the panel.
+10. The snippet list grouped by match file.
+11. A detail screen per snippet: triggers, file, text, variables, a preview, copy.
+12. Usage counts per snippet, kept on the phone.
+- Espanso snippets take precedence over iOS Text Replacements (decisions.md).
+
+Earlier list, kept for reference:
 - `clipboard` variables through `UIPasteboard`.
 - ~~Regex triggers (`espanso_match::regex`).~~ Done 2026-10-28, after the owner's first
   folder turned out to use them: Espanso's regex matcher runs beside the trigger matcher
