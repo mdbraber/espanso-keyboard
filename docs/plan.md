@@ -380,8 +380,10 @@ snippets (13) were not approved.
   keys; return inserts the best match), choice panel, form panel (text fields typed with
   the keys, choice fields cycle with a tap), clipboard through `UIPasteboard`, usage
   counts in `<app group>/Espanso/usage.json`, the on/off switch.
-- App (Keyboard Settings › Espanso Snippets): Expand Snippets switch; list grouped by
-  file with fuzzy search and "used N×"; a detail screen with triggers, file, text,
+- App (Keyboard Settings › Espanso Snippets): Expand Snippets switch; one page per
+  match file (the owner's request, so a large folder isn't one endless list), with fuzzy
+  search across all files on the main screen and within a file on its page, and
+  "used N×"; a detail screen with triggers, file, text,
   variables, preview, Copy Result, Favourite and usage; Add Snippet (to
   `match/iphone.yml`); Edit Snippet (its YAML lines). Edits are tried on a scratch copy
   and refused when Espanso reports new warnings, then written through a file coordinator

@@ -53,7 +53,7 @@ final class SnippetTests: EspansoTestCase {
         let footer = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'snippets, copied'")).firstMatch
         XCTAssertTrue(footer.waitForExistence(timeout: 5), "the screen shows how many snippets were copied")
         XCTAssertTrue(app.staticTexts["ui-espanso"].exists, "the folder’s name")
-        XCTAssertTrue(app.staticTexts[";today"].exists, "the snippets are listed")
+        XCTAssertTrue(app.cells.staticTexts["base.yml"].exists, "the match files are listed")
 
         let search = app.searchFields["Search Snippets"].firstMatch
         if !search.exists { app.swipeDown() }  // The search field shows when the list is pulled down.

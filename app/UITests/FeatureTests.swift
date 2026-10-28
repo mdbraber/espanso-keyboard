@@ -93,13 +93,23 @@ final class FeatureTests: EspansoTestCase {
         onNumbers = false
     }
 
-    private func openSnippet(_ trigger: String) {
+    /// Opens a match file's page, then one of its snippets.
+    private func openSnippet(_ trigger: String, in file: String = "base.yml") {
+        openFile(file)
         let row = app.cells.staticTexts[trigger].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "\(trigger) is listed")
         // The keyboard may still cover the lower rows.
         for _ in 0..<4 where !row.isHittable { app.tables.firstMatch.swipeUp() }
         row.tap()
         XCTAssertTrue(app.navigationBars[trigger].waitForExistence(timeout: 5), "\(trigger) opens")
+    }
+
+    private func openFile(_ file: String) {
+        let row = app.cells.staticTexts[file].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "\(file) is listed")
+        for _ in 0..<4 where !row.isHittable { app.tables.firstMatch.swipeUp() }
+        row.tap()
+        XCTAssertTrue(app.navigationBars[file].waitForExistence(timeout: 5), "\(file) opens")
     }
 
     func testExpandingCanBeTurnedOff() {
@@ -114,7 +124,9 @@ final class FeatureTests: EspansoTestCase {
         type(";hi")
         XCTAssertEqual(text, "Hoi daar")
         openEspanso()
-        XCTAssertTrue(app.staticTexts["BASE.YML"].exists || app.staticTexts["base.yml"].exists, "snippets are grouped by file")
+        XCTAssertFalse(app.cells.staticTexts[";hi"].exists, "the main screen lists files, not snippets")
+        openFile("base.yml")
+        XCTAssertTrue(app.cells.staticTexts[";today"].exists, "the file's page lists its snippets")
         let used = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'used 1×'")).firstMatch
         XCTAssertTrue(used.waitForExistence(timeout: 5), "the keyboard counted the expansion")
     }
@@ -159,8 +171,11 @@ final class FeatureTests: EspansoTestCase {
         XCTAssertEqual(text, typed)
     }
 
+    /// After saving, the new file is listed with the snippet on its page.
     private func openSnippetAfterSave(_ trigger: String) {
-        XCTAssertTrue(app.cells.staticTexts[trigger].waitForExistence(timeout: 10), "the new snippet is listed")
+        XCTAssertTrue(app.cells.staticTexts["iphone.yml"].waitForExistence(timeout: 10), "iphone.yml is listed")
+        openFile("iphone.yml")
+        XCTAssertTrue(app.cells.staticTexts[trigger].waitForExistence(timeout: 5), "the new snippet is on its page")
     }
 
     func testEditingSavesOnlyThatSnippet() throws {

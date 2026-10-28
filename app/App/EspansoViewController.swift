@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// match file, and Espanso's warnings (espanso-keyboard, plan steps 5 and 6).
 final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate, UISearchResultsUpdating {
     private enum Row: Hashable {
-        case enabled, folder, reload, warning(String), snippet(Int32)
+        case enabled, folder, reload, warning(String), snippet(Int32), file(String)
     }
 
     private struct Section {
@@ -80,9 +80,9 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         ]
         let all = snippets.values.sorted { ($0.file, $0.triggers[0]) < ($1.file, $1.triggers[0]) }
         if query.isEmpty {
-            for (file, inFile) in Dictionary(grouping: all, by: \.file).sorted(by: { $0.key < $1.key }) {
-                sections.append(Section(title: file, rows: inFile.map { .snippet($0.id) }))
-            }
+            // One page per match file, so a long folder doesn't make one endless list.
+            let files = Set(all.map(\.file)).sorted()
+            if !files.isEmpty { sections.append(Section(title: "Files", rows: files.map(Row.file))) }
             let warnings = summary?.warnings ?? []
             if !warnings.isEmpty { sections.append(Section(title: "Warnings", rows: warnings.map(Row.warning))) }
         } else {
@@ -146,14 +146,11 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             content.textProperties.font = .preferredFont(forTextStyle: .footnote)
             cell.selectionStyle = .none
         case .snippet(let id):
-            let snippet = snippets[id]
-            content = .subtitleCell()
-            content.text = snippet?.triggers.joined(separator: "  ")
-            content.textProperties.font = .monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize, weight: .regular)
-            let used = (snippet?.triggers.first).flatMap { usage[$0] }.map { " · used \($0.count)×" } ?? ""
-            content.secondaryText = (snippet?.label ?? "") + used
-            content.secondaryTextProperties.color = .secondaryLabel
-            content.secondaryTextProperties.numberOfLines = 2
+            if let snippet = snippets[id] { content = SnippetListViewController.content(for: snippet, usage: usage) }
+            cell.accessoryType = .disclosureIndicator
+        case .file(let file):
+            content.text = file
+            content.secondaryText = "\(snippets.values.count { $0.file == file })"
             cell.accessoryType = .disclosureIndicator
         }
         cell.contentConfiguration = content
@@ -174,6 +171,10 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         case .snippet(let id):
             guard let engine, let snippet = snippets[id] else { return }
             navigationController?.pushViewController(SnippetViewController(snippet: snippet, engine: engine), animated: true)
+        case .file(let file):
+            guard let engine else { return }
+            let inFile = snippets.values.filter { $0.file == file }.sorted { $0.triggers[0] < $1.triggers[0] }
+            navigationController?.pushViewController(SnippetListViewController(file: file, snippets: inFile, engine: engine), animated: true)
         case .enabled, .warning:
             break
         }
