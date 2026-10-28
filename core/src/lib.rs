@@ -4,6 +4,7 @@
 //! match and render libraries. `script` variables run through a host-supplied
 //! [`ScriptRunner`]. `ffi` is the same interface for Swift, generated with UniFFI.
 
+pub mod edit;
 mod engine;
 mod espanso;
 pub mod ffi;

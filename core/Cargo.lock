@@ -290,6 +290,7 @@ dependencies = [
  "log",
  "regex",
  "self_cell",
+ "serde_norway",
  "thiserror 2.0.21",
  "unicode-segmentation",
  "uniffi",
