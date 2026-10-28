@@ -16,9 +16,10 @@ new Jitsi meeting link (see `fixtures/espanso/match/base.yml`).
 ## Status
 
 `core/` has the expansion engine in Rust: it loads an Espanso folder, matches typed
-characters and renders expansions with Espanso's own libraries (plan step 1), with tests,
-and builds for the iPhone and the iPhone Simulator. Script variables, the Swift package
-and the keyboard follow in [docs/plan.md](docs/plan.md).
+characters and renders expansions with Espanso's own libraries, including `script`
+variables (plan steps 1 and 2). `swift/EspansoKeyboardCore/` wraps it for Swift with
+UniFFI and runs scripts with JavaScriptCore (step 3). The keyboard itself follows in
+[docs/plan.md](docs/plan.md), step 4.
 
 ## Documents
 
@@ -47,6 +48,7 @@ scripts/check-ios.sh
 ```
 
 Runs the core tests, then builds the core for the iPhone and the iPhone Simulator.
+`scripts/test-swift.sh` builds the XCFramework and runs the Swift tests in the Simulator.
 
 ## Licence
 

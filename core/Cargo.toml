@@ -21,6 +21,15 @@ self_cell = "1"
 unicode-segmentation = "1"
 log = "0.4"
 thiserror = "2.0.21"
+uniffi = { version = "0.32", default-features = false }
+
+[features]
+# Builds the uniffi-bindgen tool (scripts/build-xcframework.sh); not needed by the library.
+cli = ["uniffi/cli"]
+
+[[bin]]
+name = "uniffi-bindgen"
+required-features = ["cli"]
 
 [profile.release]
 opt-level = "z"

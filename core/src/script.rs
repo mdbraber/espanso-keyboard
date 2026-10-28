@@ -29,7 +29,7 @@ use log::{info, warn};
 use thiserror::Error;
 
 /// What running a script produced.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, uniffi::Record)]
 pub struct ScriptOutput {
     /// Everything printed with `console.log`, joined with newlines.
     pub stdout: String,

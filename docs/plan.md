@@ -173,6 +173,39 @@ snippet.
 **Done when:** these tests pass and the size and memory numbers are written into this
 file. If memory after loading is above about 30 MB, stop and discuss before step 4.
 
+**Result (2026-10-28): done, except measuring the owner's real Espanso folder.**
+
+- UniFFI 0.32.2 with procedural macros, in `core/src/ffi.rs`: a thin wrapper around the
+  Rust `EspansoEngine` behind a mutex, with `ScriptRunner` as a callback interface. Swift
+  sees `EspansoEngine(configFolder:scriptRunner:)`, `typeText(text:)`, `backspace()`,
+  `reset()`, `search(query:)`, `warnings()` and `lastError()`. The bindings are generated
+  directly from the iPhone static library; `uniffi-bindgen` is a binary in `core/` behind
+  the `cli` feature, so the library doesn't build the generator's dependencies for the
+  iPhone.
+- `scripts/build-xcframework.sh` builds both targets (iOS 17.0 minimum), generates the
+  bindings and writes `EspansoKeyboardCoreFFI.xcframework` and the generated Swift file
+  into `swift/EspansoKeyboardCore/`. Both are ignored by git, so run the script before
+  building the package. `scripts/test-swift.sh` runs it and then the Swift tests.
+- `swift/EspansoKeyboardCore/` (Swift 6, iOS 17) has `JavaScriptCoreScriptRunner` and
+  8 tests, run in the iPhone 18 Pro Simulator: `;jitsi` gives a new 10-character room each
+  time; earlier variables reach the script; an endless loop fails the snippet after
+  1.0 seconds and a second engine still works meanwhile; `console.error`, a thrown error
+  and a missing file fail the snippet; `console` output matches Bun's for the cases in
+  the script contract; memory.
+- **Size:** the static library is 41 MB, but a release iPhone app linking the package
+  grows by 4.7 MB (4.1 MB with symbols stripped, as in an archive): about 1.7 MB of code
+  and 1.4 MB of constant data, much of which is probably the time zone and locale tables
+  of the date extension.
+- **Memory** (Simulator, test run on its own, phys_footprint): loading the fixture adds
+  0.05 MB, and a generated folder of 2000 snippets 0.4 MB. The first script run adds
+  3.9 MB for JavaScriptCore; 20 more runs add 0.2 MB. Well under 30 MB. The owner's real
+  folder isn't in gloob: copy it to a temporary folder outside the repository and pass
+  it to the memory test, or measure on the iPhone in step 4.
+- A script that never ends keeps running on its thread after the snippet fails, using a
+  CPU core until the keyboard is stopped. JavaScriptCore's private
+  `JSContextGroupSetExecutionTimeLimit` could stop it; that needs the owner's agreement
+  as it changes the decision recorded in script-contract.md.
+
 ## Step 4: Keyboard
 
 1. Bring Hex into `app/` with `git subtree add --prefix app

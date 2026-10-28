@@ -2,11 +2,14 @@
 //!
 //! [`EspansoEngine`] turns typed characters into expansions with Espanso's own config,
 //! match and render libraries. `script` variables run through a host-supplied
-//! [`ScriptRunner`]. The Swift interface follows in docs/plan.md.
+//! [`ScriptRunner`]. `ffi` is the same interface for Swift, generated with UniFFI.
 
 mod engine;
 mod espanso;
+pub mod ffi;
 mod script;
+
+uniffi::setup_scaffolding!();
 
 use std::path::Path;
 

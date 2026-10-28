@@ -28,7 +28,7 @@ use crate::espanso;
 use crate::script::{ScriptExtension, ScriptRunner};
 
 /// What the keyboard does to the text field for one expansion, or for undoing one.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct Expansion {
     /// Characters (grapheme clusters, one `deleteBackward` each) to delete before the cursor.
     pub delete_count: u32,
@@ -39,7 +39,7 @@ pub struct Expansion {
 }
 
 /// One snippet, for searching and listing.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct SnippetSummary {
     pub triggers: Vec<String>,
     /// The match's label, or its replacement text when it has none (Espanso's

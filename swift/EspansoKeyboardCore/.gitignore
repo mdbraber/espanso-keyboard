@@ -1,0 +1,7 @@
+# Made by scripts/build-xcframework.sh
+/EspansoKeyboardCoreFFI.xcframework
+/Sources/EspansoKeyboardCore/Generated/*
+!/Sources/EspansoKeyboardCore/Generated/README.md
+# Swift Package Manager and Xcode
+/.build
+/.swiftpm
