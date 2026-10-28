@@ -61,6 +61,10 @@ protocol ScriptRunner {         // implemented in Swift with JavaScriptCore
 }
 ```
 
+The keyboard inserts each typed character first and then calls `type`. It calls
+`backspace` before deleting; if that returns an expansion, the keyboard applies it instead
+of deleting a character.
+
 The renderer is synchronous, so `run` blocks until the script finishes or the time limit
 passes. The keyboard therefore calls `type` off the main thread whenever the typed text
 could complete a trigger with a script variable, or simply always.

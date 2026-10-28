@@ -17,9 +17,14 @@ espanso-config = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
 espanso-match = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
 espanso-render = { git = "https://github.com/espanso/espanso", rev = "80d9e35" }
 anyhow = "1"
+self_cell = "1"
+unicode-segmentation = "1"
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[dev-dependencies]
+chrono = "0.4"

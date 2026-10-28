@@ -73,6 +73,50 @@ libraries. No JavaScript yet; script variables return an error.
 
 **Done when:** these tests pass and `scripts/check-ios.sh` still passes.
 
+**Result (2026-10-28): done.** `EspansoEngine` is in `core/src/engine.rs`; the code
+copied from Espanso is in `core/src/espanso.rs`. `core/tests/engine.rs` has 20 tests (all
+of the above plus nested matches, global variables, `propagate_case`, backspace while
+typing a trigger, `undo_backspace: false`, choice, search and unsupported snippets). They
+run through a simulated text field that applies each expansion as the keyboard will.
+`scripts/check-ios.sh` passes. The release static library grew from 31 MB to 40 MB with
+the renderer linked in.
+
+How it follows Espanso, and where it differs:
+
+- Each step follows the Espanso middleware it is named after (matcher, cause
+  compensation, render, cursor hint, undo, action); comments in `engine.rs` name them.
+- Call order: the keyboard inserts a typed character and then calls `type`, so the
+  trigger is in the text field when it is replaced, as on the Mac. It calls `backspace`
+  *before* deleting; an expansion returned then replaces the normal delete (Espanso
+  instead deletes one character fewer, because the backspace already deleted one).
+- Delete counts and cursor offsets are in grapheme clusters, one per `deleteBackward`.
+  Espanso counts Unicode scalars for deleting, which differs only for triggers with
+  combined characters such as `👍🏽`.
+- `reset()` clears the matcher state and undo, as Espanso does for a mouse click, rather
+  than feeding a `VirtualSeparator`. Both stop a trigger in progress; clearing also
+  forgets the backspace history, which no longer fits the text after a cursor move.
+- Text after a trigger in the same key press (a `.com` key) is deleted and inserted again
+  after the expansion; only the first expansion in one key press is applied.
+- A failed render doesn't expand and is available as `last_error()`. Espanso on the Mac
+  types "[Espanso]: An error occurred during rendering…" instead.
+- Markdown, HTML and image snippets aren't expanded, and regex triggers wait for step 6;
+  each is listed in `warnings`. `choice` variables cancel the snippet until there is a
+  picker (step 6).
+- `type` is named `type_text` in Rust (`type` is a keyword); the Swift name can be set in
+  step 3.
+
+Open questions:
+
+- **Undo of a `word: true` trigger doubles the left separator**, on the Mac too: Espanso
+  keeps the separator before the trigger when expanding, but types it again on undo
+  (`espanso-engine/src/process/middleware/action.rs`). "ok brb " → "ok be right back " →
+  backspace → "ok  brb ". The keyboard copies this to match the Mac; the test
+  `undo_of_a_word_trigger_puts_back_the_whole_trigger` records it. Fix in both or keep?
+- **Several snippets with the same trigger**: Espanso asks which one; the keyboard takes
+  the first. A picker could come with the choice panel in step 6.
+- **Cursor offset units**: `adjustTextPosition(byCharacterOffset:)` may count UTF-16
+  units rather than grapheme clusters. Check in step 4 with an emoji after `$|$`.
+
 ## Step 2: Script variables in Rust
 
 1. Add a replacement `script` extension in `core/` that follows

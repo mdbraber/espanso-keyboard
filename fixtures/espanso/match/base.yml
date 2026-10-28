@@ -1,3 +1,13 @@
+# Test snippets for core/tests/. Not the owner's snippets.
+imports:
+  - "_imported.yml"
+
+global_vars:
+  - name: greeting
+    type: echo
+    params:
+      echo: "Hoi"
+
 matches:
   - trigger: ";today"
     replace: "{{today}}"
@@ -16,3 +26,41 @@ matches:
         type: script
         params:
           args: [bun, "%CONFIG%/scripts/jitsi.js", "10"]
+
+  # Only between word separators.
+  - trigger: "brb"
+    replace: "be right back"
+    word: true
+
+  # Cursor ends up between "Dear " and ",".
+  - trigger: ";dear"
+    replace: "Dear $|$,"
+
+  # Non-ASCII triggers: accented letters and an emoji with a skin-tone modifier.
+  - trigger: ";café"
+    replace: "koffie"
+  - trigger: ";👍🏽"
+    replace: "prima"
+
+  # Nested match and global variable.
+  - trigger: ";hi"
+    replace: "{{greeting}} daar"
+  - trigger: ";nest"
+    replace: "{{inner}}, hoe gaat het?"
+    vars:
+      - name: inner
+        type: match
+        params:
+          trigger: ";hi"
+
+  - trigger: "alh"
+    replace: "although"
+    propagate_case: true
+
+  - trigger: ";pick"
+    replace: "{{fruit}}"
+    vars:
+      - name: fruit
+        type: choice
+        params:
+          values: [appel, peer]

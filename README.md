@@ -15,9 +15,10 @@ new Jitsi meeting link (see `fixtures/espanso/match/base.yml`).
 
 ## Status
 
-Starting point only. `core/` loads an Espanso folder with Espanso's loader and has tests;
-it builds for the iPhone and the iPhone Simulator. Everything else is described in
-[docs/plan.md](docs/plan.md).
+`core/` has the expansion engine in Rust: it loads an Espanso folder, matches typed
+characters and renders expansions with Espanso's own libraries (plan step 1), with tests,
+and builds for the iPhone and the iPhone Simulator. Script variables, the Swift package
+and the keyboard follow in [docs/plan.md](docs/plan.md).
 
 ## Documents
 

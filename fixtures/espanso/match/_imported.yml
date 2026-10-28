@@ -1,0 +1,4 @@
+# Starts with "_", so Espanso loads it only because base.yml imports it.
+matches:
+  - trigger: ";imported"
+    replace: "from an imported file"

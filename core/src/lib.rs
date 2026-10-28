@@ -1,10 +1,14 @@
 //! Espanso snippet expansion for an iPhone keyboard extension.
 //!
-//! This is the starting point only: it loads an Espanso configuration folder with
-//! Espanso's own loader and reports what it found. The matching, rendering and
-//! JavaScript work is described in docs/plan.md.
+//! [`EspansoEngine`] turns typed characters into expansions with Espanso's own config,
+//! match and render libraries. Scripts and the Swift interface follow in docs/plan.md.
+
+mod engine;
+mod espanso;
 
 use std::path::Path;
+
+pub use engine::{EspansoEngine, Expansion, SnippetSummary};
 
 use anyhow::Result;
 
