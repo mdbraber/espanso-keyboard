@@ -289,6 +289,8 @@ Items 4 and 5 (2026-10-28):
   ordinary typing with autocapitalization and the double-space period. All 6 pass, and
   Hex's own `TypingTests` still pass (9, plus 1 skipped as iPad-only):
   `scripts/test-keyboard.sh -only-testing:HexUITests/TypingTests`.
+- **Done (2026-10-28):** the owner confirmed the snippets work on the iPhone, installed
+  from gloob; the Simulator checks are the UI tests above.
 - Known limits: `type` runs on the main thread, so a slow script holds the keyboard for
   up to the 1-second limit (architecture.md suggests a background thread; not needed for
   the fixture scripts, which take milliseconds). A `word: true` trigger that Hex
