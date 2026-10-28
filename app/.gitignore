@@ -1,0 +1,16 @@
+*.xcodeproj
+build/
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+/shots/raw/
+/App/Info.plist
+/Keyboard/Info.plist
+/web/dist/
+.vercel
+.progress-note.txt
+/Config/Team.xcconfig
+/xtool/

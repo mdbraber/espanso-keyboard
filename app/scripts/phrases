@@ -1,0 +1,10 @@
+#!/bin/sh
+# Rebuilds Packages/HexKeyboard/Sources/KeyboardUI/Resources/en.phrases (see scripts/phrases.py for the source).
+# Needs build/lexicon/words.tsv from scripts/lexicon.
+set -e
+cd "$(dirname "$0")/.."
+nice -n 19 uv run --no-project python3 scripts/phrases.py build/lexicon/words.tsv build/phrases
+scripts/sync
+rsync -a build/phrases/contexts.tsv mac:Developer/hex-keyboard/build/phrases/
+ssh mac "cd ~/Developer/hex-keyboard/Packages/HexKeyboard && swift run -c release PhrasesBuilder ../../build/phrases/contexts.tsv Sources/KeyboardUI/Resources/en.phrases"
+rsync -a mac:Developer/hex-keyboard/Packages/HexKeyboard/Sources/KeyboardUI/Resources/en.phrases Packages/HexKeyboard/Sources/KeyboardUI/Resources/

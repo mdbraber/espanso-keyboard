@@ -1,0 +1,112 @@
+name: HexKeyboard
+options:
+  bundleIdPrefix: com.shahidy.hexkeyboard
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  HexKeyboard:
+    path: Packages/HexKeyboard
+targets:
+  Hex:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - target: Keyboard
+      - package: HexKeyboard
+        product: KeyboardUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard
+        CODE_SIGN_ENTITLEMENTS: App/Hex.entitlements
+        PRODUCT_NAME: Hex
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Hex
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.shahidy.hexkeyboard
+            CFBundleURLSchemes: [hexkeyboard]
+        NSMicrophoneUsageDescription: Hex listens when you pick Voice on the keyboard, and turns what you say into text on your iPhone.
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+  Keyboard:
+    type: app-extension
+    platform: iOS
+    sources: [Keyboard]
+    dependencies:
+      - package: HexKeyboard
+        product: KeyboardUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard.keyboard
+        CODE_SIGN_ENTITLEMENTS: Keyboard/Keyboard.entitlements
+        PRODUCT_NAME: Keyboard
+    info:
+      path: Keyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Hex
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: true
+            PrefersRightToLeft: false
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: true
+  HexUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Hex
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Hex
+        SWIFT_OBJC_BRIDGING_HEADER: UITests/EventSynthesis.h
+        SWIFT_VERSION: "5.0"
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+schemes:
+  Hex:
+    build:
+      targets:
+        Hex: all
+        Keyboard: all
+    run:
+      config: Release
+    test:
+      config: Debug
+      targets: [HexUITests]

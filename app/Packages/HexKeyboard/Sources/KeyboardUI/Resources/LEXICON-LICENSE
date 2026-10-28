@@ -1,0 +1,55 @@
+en.lexicon is built by scripts/lexicon from two sources. Hex's own code is MIT (see LICENSE at the repository root);
+the word list and counts inside en.lexicon carry these notices.
+
+Words: SCOWL (Spell Checker Oriented Word Lists) 2020.12.07 by Kevin Atkinson, http://wordlist.aspell.net/
+en_US lists up to size 60 and proper names up to 50, plus larger-list words as common as the median size-60 word.
+
+  Copyright 2000-2018 by Kevin Atkinson
+
+  Permission to use, copy, modify, distribute and sell these word
+  lists, the associated scripts, the output created from the scripts,
+  and its documentation for any purpose is hereby granted without fee,
+  provided that the above copyright notice appears in all copies and
+  that both that copyright notice and this permission notice appear in
+  supporting documentation. Kevin Atkinson makes no representations
+  about the suitability of this array for any purpose. It is provided
+  "as is" without express or implied warranty.
+
+  SCOWL's component lists are public domain or under similar permissive notices; the full text is in the
+  Copyright file of the SCOWL release.
+
+Frequencies: Google Books Ngram Viewer, version 20200217, English Fiction 1-grams and 2-grams, books from 1980 on,
+https://storage.googleapis.com/books/ngrams/books/datasetsv3.html
+
+  This compilation is licensed under a Creative Commons Attribution 3.0 Unported License,
+  https://creativecommons.org/licenses/by/3.0/
+  en.lexicon contains counts derived from it (summed per word, rounded to tenths of a nat of log-probability).
+
+emoji.txt is Hex's own picks (MIT like the rest of Hex): each word was read alongside the emoji these sources link to
+it, as scripts/emoji.py prints them, and given the ones someone typing it would want, or none:
+
+Unicode's emoji-test.txt, Emoji 16.0, https://unicode.org/Public/emoji/16.0/, CLDR 46's English annotations,
+https://github.com/unicode-org/cldr/blob/release-46/common/annotations/en.xml, and Unicode's emoji frequency,
+https://home.unicode.org/emoji/emoji-frequency/ (all under the Unicode License v3, https://www.unicode.org/license.txt,
+Copyright © 1991-2024 Unicode, Inc.): the fully-qualified emoji, each one's name and keywords, and how much it is used.
+
+emojilib 4.0.3 (dist/emoji-en-US.json, commit b4da694), https://github.com/muan/emojilib, Copyright (c) 2014 Mu-An Chiou,
+and gemoji (db/emoji.json, commit fadaeaf), https://github.com/github/gemoji, Copyright (c) 2019 GitHub, Inc.: each
+emoji's keywords, aliases and tags. Both are under the MIT License:
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+  the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+en.phrases is built by scripts/phrases from the same Google Books Ngram English Fiction release (2-grams and 3-grams,
+books from 1980 on, CC BY 3.0 as above): for each word and pair of words, the words that most often follow them, with
+their counts turned into probabilities.

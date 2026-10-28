@@ -1,0 +1,15 @@
+#!/bin/bash
+# Runs on the Mac. Types the phrase corpus with simulated taps and prints word accuracy for the old and new correctors.
+# Optional argument: one test (noise, biasedThumbs or aimShift). A full run must match eval.expected; a change that moves the
+# numbers updates that file in the same commit.
+set -euo pipefail
+cd "$(dirname "$0")/../Packages/HexKeyboard"
+ID=$(../../scripts/sim ensure "iPhone 17" iPhone-17)
+BOOTED=$(xcrun simctl list devices | grep -c "$ID) (Booted)" || true)
+OUT=../../build/eval.txt
+xcodebuild test -scheme HexKeyboard-Package -destination "id=$ID" -derivedDataPath ../../build/tests \
+  -configuration Release ENABLE_TESTABILITY=YES \
+  -only-testing:KeyboardUITests/Evaluation${1:+/$1()} 2>&1 | grep -E "error:|EVAL|✘" | tee "$OUT" || true
+[ "$BOOTED" = 1 ] || xcrun simctl shutdown "$ID" 2>/dev/null || true
+[ -z "${1:-}" ] || exit 0
+diff -u <(sort ../../scripts/eval.expected) <(grep '^EVAL' "$OUT" | grep -v '^EVAL latency' | sort) && echo "EVAL matches eval.expected"

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Runs on the Mac after scripts/build. Shows the keyboard over a field holding text (so the corrector loads and runs)
+# and prints the extension's memory footprint. No XCUITest, which inflates the extension.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ID=$(scripts/sim ensure "${NAME:-iPhone 17}" "${TYPE:-iPhone-17}")
+BOOTED=$(xcrun simctl list devices | grep -c "$ID) (Booted)" || true)
+scripts/sim boot "$ID"
+scripts/sim use "$ID" hex
+for text in "" "${1:-I think the wor}"; do
+  xcrun simctl terminate "$ID" com.shahidy.hexkeyboard 2>/dev/null || true
+  pkill -f "$ID.*Keyboard.appex/Keyboard" 2>/dev/null || true
+  xcrun simctl launch "$ID" com.shahidy.hexkeyboard -HexFocus YES -HexText "$text" >/dev/null
+  until PID=$(pgrep -f "$ID.*Keyboard.appex/Keyboard"); do sleep 0.5; done
+  sleep 5
+  echo "text=\"$text\" $(footprint -p "$PID" 2>/dev/null | grep -m1 -E 'Footprint:')"
+done
+[ "$BOOTED" = 1 ] || xcrun simctl shutdown "$ID"
