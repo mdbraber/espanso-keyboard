@@ -25,8 +25,9 @@ app groups and provisioning profiles through that account.
 Don't add other Apple credentials to gloob, such as App Store Connect API keys or
 exported certificate files.
 
-Put the team ID and identifier prefix in an untracked file (`Config/Local.xcconfig`, see
-step 4 of the plan), never in git.
+Put the team ID and identifiers in the untracked `Config/Local.xcconfig`, never in git.
+Copy `Config/Local.xcconfig.example` and fill in `DEVELOPMENT_TEAM` (Xcode › Settings ›
+Accounts), `APP_BUNDLE_ID` and `APP_GROUP_ID`.
 
 ## Getting a signed build onto the iPhone
 

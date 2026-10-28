@@ -1,0 +1,5 @@
+// Copy to Config/Local.xcconfig, which git ignores, and fill in. Read by
+// app/Config/Signing.xcconfig. See docs/build-on-gloob.md, "Signing".
+DEVELOPMENT_TEAM = ABCDE12345
+APP_BUNDLE_ID = com.example.espansokeyboard
+APP_GROUP_ID = group.com.example.espansokeyboard

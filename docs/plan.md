@@ -237,6 +237,26 @@ file. If memory after loading is above about 30 MB, stop and discuss before step
 Fantastical event gives a new meeting link each time, `;today` gives the date, and normal
 typing and autocorrect feel unchanged.
 
+**Progress (2026-10-28):** items 1 and 2 done.
+
+- Hex is in `app/` from upstream commit `4d048b2` (squashed subtree).
+- Hex builds with XcodeGen: `cd app && xcodegen generate`, then build the `Hex` scheme.
+  Its deployment target is iOS 26, so the iPhone needs iOS 26 or later.
+- Identifiers: `app/Config/Signing.xcconfig` includes the repository's
+  `Config/Local.xcconfig` (example: `Config/Local.xcconfig.example`), which sets
+  `DEVELOPMENT_TEAM`, `APP_BUNDLE_ID` and `APP_GROUP_ID`. Without it, Simulator builds use
+  `com.example.espansokeyboard`. The bundle IDs, URL name and entitlements use these
+  settings. The app group reaches the Swift code through a `HexAppGroup` Info.plist key
+  (`SettingsStore.appGroup`), and a build script sets it in the built `Settings.bundle`;
+  that script needs `ENABLE_USER_SCRIPT_SANDBOXING = NO` on the Hex target only.
+- Left unchanged in Hex, as they only matter for Hex's own development: its `scripts/`,
+  UI tests and `xtool.yml` still name `com.shahidy.hexkeyboard`, and its logs still use
+  that subsystem.
+- Checked: the Simulator build has the bundle IDs and app group from the settings in both
+  Info.plists, both entitlements and `Settings.bundle`, and Hex launches.
+- Next: the owner chooses the bundle ID (item 3), then a signed device build for the
+  owner to install from the Mac.
+
 ## Step 5: Companion app import
 
 1. In the Hex app, add a screen to pick the Espanso folder from iCloud Drive with a folder

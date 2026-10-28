@@ -6,7 +6,9 @@ import KeyboardCore
 /// keeps its own copy of every value and takes the group's only when the group holds one it hasn't seen: a missing
 /// value changes nothing, and a side that may write the group puts its copy back.
 public enum SettingsStore {
-    public static let appGroup = "group.com.shahidy.hexkeyboard"
+    /// From the `HexAppGroup` Info.plist key, set from `APP_GROUP_ID` (Config/Signing.xcconfig).
+    public static let appGroup = Bundle.main.object(forInfoDictionaryKey: "HexAppGroup") as? String
+        ?? "group.com.shahidy.hexkeyboard"
 
     public static let toggles: [(key: String, path: WritableKeyPath<KeyboardSettings, Bool>)] = [
         ("autoCapitalization", \.autoCapitalization),

@@ -32,20 +32,33 @@ targets:
         product: KeyboardUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
         CODE_SIGN_ENTITLEMENTS: App/Hex.entitlements
         PRODUCT_NAME: Hex
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The script below edits the copied Settings.bundle, which a sandboxed script can't.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      - name: Set the App Group in Settings.bundle
+        script: |
+          /usr/libexec/PlistBuddy -c "Set :ApplicationGroupContainerIdentifier $APP_GROUP_ID" "$SCRIPT_INPUT_FILE_0"
+          touch "$SCRIPT_OUTPUT_FILE_0"
+        # The input orders the script after the resource copy; the output is only a stamp.
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/Settings.bundle/Root.plist
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/settings-app-group.stamp
     info:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Hex
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        HexAppGroup: $(APP_GROUP_ID)
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
         CFBundleURLTypes:
-          - CFBundleURLName: com.shahidy.hexkeyboard
+          - CFBundleURLName: $(APP_BUNDLE_ID)
             CFBundleURLSchemes: [hexkeyboard]
         NSMicrophoneUsageDescription: Hex listens when you pick Voice on the keyboard, and turns what you say into text on your iPhone.
         UIBackgroundModes: [audio]
@@ -66,7 +79,7 @@ targets:
         product: KeyboardUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).keyboard
         CODE_SIGN_ENTITLEMENTS: Keyboard/Keyboard.entitlements
         PRODUCT_NAME: Keyboard
     info:
@@ -75,6 +88,7 @@ targets:
         CFBundleDisplayName: Hex
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        HexAppGroup: $(APP_GROUP_ID)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSExtension:
@@ -93,7 +107,7 @@ targets:
       - target: Hex
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shahidy.hexkeyboard.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Hex
         SWIFT_OBJC_BRIDGING_HEADER: UITests/EventSynthesis.h

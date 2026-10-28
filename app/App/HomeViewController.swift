@@ -23,7 +23,7 @@ final class HomeViewController: UITableViewController {
 
     /// The keyboards in Settings › General › Keyboard › Keyboards, read from the global defaults iOS keeps them in.
     private static var keyboardIsAdded: Bool {
-        (UserDefaults.standard.array(forKey: "AppleKeyboards") as? [String] ?? []).contains("com.shahidy.hexkeyboard.keyboard")
+        (UserDefaults.standard.array(forKey: "AppleKeyboards") as? [String] ?? []).contains((Bundle.main.bundleIdentifier ?? "") + ".keyboard")
     }
 
     init() {
