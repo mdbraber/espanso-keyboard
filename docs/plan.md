@@ -254,8 +254,14 @@ typing and autocorrect feel unchanged.
   that subsystem.
 - Checked: the Simulator build has the bundle IDs and app group from the settings in both
   Info.plists, both entitlements and `Settings.bundle`, and Hex launches.
-- Next: the owner chooses the bundle ID (item 3), then a signed device build for the
-  owner to install from the Mac.
+- Bundle ID `com.mdbraber.espansokeyboard` (keyboard `.keyboard`, app group
+  `group.com.mdbraber.espansokeyboard`), chosen by the owner to match their other apps.
+  The signed device build (`xcodebuild … -configuration Release -destination
+  'generic/platform=iOS' -allowProvisioningUpdates build`) registered them through Xcode's
+  account; both targets got team provisioning profiles, 18 MB app.
+- Next (item 3): the owner installs it from the Mac
+  (`xcrun devicectl device install app --device <iPhone> Hex.app`) and types with it for
+  a day, including Dutch.
 
 ## Step 5: Companion app import
 
