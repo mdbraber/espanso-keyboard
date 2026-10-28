@@ -15,6 +15,26 @@ steps 3 (Swift tests) and 4 onwards would then run their Simulator checks on the
 **Done when:** `scripts/check-ios.sh` passes, `bun fixtures/espanso/scripts/jitsi.js`
 prints a room name, and the Simulator question is answered.
 
+**Result (2026-10-28): done.**
+
+- Versions: macOS 27.0 (26A428), Xcode 27.1 (27A9275), Apple clang 21.0.0, iOS Simulator
+  runtimes 27.0 and 27.1; rustup 1.29.2, rustc and cargo 1.99.1 with the
+  `aarch64-apple-ios` and `aarch64-apple-ios-sim` targets; XcodeGen 2.46.0, Bun 1.4.3,
+  just 1.59.0 (Homebrew).
+- `scripts/check-ios.sh` passes: 2 core tests, then both iPhone builds. The release
+  static library is 31 MB for each target. A first run, including downloading and
+  building all crates, took about 50 seconds.
+- `bun fixtures/espanso/scripts/jitsi.js 10` prints a 10-character room name.
+- **The Simulator works in gloob.** A throwaway SwiftUI app (made with XcodeGen, kept
+  outside the repository) built with `xcodebuild -sdk iphonesimulator`, installed with
+  `xcrun simctl install` and ran with `xcrun simctl launch --console-pty` on an
+  iPhone 18 Pro Simulator (iOS 27.1). Its console output came through, and
+  `simctl io screenshot` showed its screen. Booting the device the first time took
+  about 1.5 minutes. Simulator checks in steps 3 and 4 can run in gloob.
+- Differences from the instructions: the Xcode licence and the iOS platform were already
+  in place; gloob has 28 GB of memory, not 16 GB; rustup's PATH change needs a new shell
+  or `source "$HOME/.cargo/env"`. [build-on-gloob.md](build-on-gloob.md) is updated.
+
 ## Step 1: Expansion engine in Rust
 
 In `core/`, build the engine that turns typed characters into expansions, using Espanso's
@@ -82,7 +102,7 @@ error output fails the snippet unless `ignore_error: true`; `trim: false` keeps 
    generated Swift file, plus a `JavaScriptCoreScriptRunner`: loads the file, sets up
    `process.argv`, `process.env` and `console`, runs the script in a fresh `JSContext` on
    a background queue, and stops waiting after about one second.
-4. Measure: the size the core adds to a linked app (the static library is about 27 MB
+4. Measure: the size the core adds to a linked app (the static library is about 31 MB
    before linking; most of that should be stripped), and the memory used after `load` with
    the fixture and with the owner's real Espanso folder.
 

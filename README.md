@@ -33,7 +33,7 @@ it builds for the iPhone and the iPhone Simulator. Everything else is described 
 ## Getting started
 
 ```sh
-git clone git@github.com:mdbraber/espanso-keyboard.git ~/src/espanso-keyboard
+git clone git@github-espanso-keyboard:mdbraber/espanso-keyboard.git ~/src/espanso-keyboard
 ```
 
 Then follow [docs/build-on-gloob.md](docs/build-on-gloob.md) and step 0 of
