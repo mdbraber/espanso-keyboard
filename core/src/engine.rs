@@ -228,15 +228,15 @@ impl EspansoEngine {
         self.undo = None;
     }
 
-    /// Snippets whose trigger, label or search terms contain `query` (ignoring case).
-    /// An empty query lists every snippet.
+    /// Snippets the keyboard can expand whose trigger, label or search terms contain
+    /// `query` (ignoring case). An empty query lists all of them.
     pub fn search(&self, query: &str) -> Vec<SnippetSummary> {
         let query = query.to_lowercase();
         let mut matches: Vec<&Match> = self.matches.values().collect();
         matches.sort_by_key(|m| m.id);
         matches
             .into_iter()
-            .filter(|m| !matches!(m.cause, MatchCause::None))
+            .filter(|m| !matches!(m.cause, MatchCause::None) && unsupported(m).is_none())
             .filter(|m| {
                 query.is_empty()
                     || m.description().to_lowercase().contains(&query)

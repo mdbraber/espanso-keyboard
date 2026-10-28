@@ -72,6 +72,14 @@ final class SnippetTests: XCTestCase {
         let footer = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'snippets, copied'")).firstMatch
         XCTAssertTrue(footer.waitForExistence(timeout: 5), "the screen shows how many snippets were copied")
         XCTAssertTrue(app.staticTexts["espanso"].exists, "the folder's name")
+        XCTAssertTrue(app.staticTexts[";today"].exists, "the snippets are listed")
+
+        let search = app.searchFields["Search Snippets"].firstMatch
+        if !search.exists { app.swipeDown() }  // The search field shows when the list is pulled down.
+        search.tap()
+        search.typeText("koffie")
+        XCTAssertTrue(app.staticTexts[";café"].waitForExistence(timeout: 5), "searching finds a snippet by its text")
+        XCTAssertFalse(app.staticTexts[";today"].exists, "and hides the others")
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.lifetime = .keepAlways
         add(shot)

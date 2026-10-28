@@ -1,15 +1,23 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// Picks the Espanso folder in iCloud Drive and shows the keyboard's copy of it (espanso-keyboard, plan step 5).
-final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate {
+/// Picks the Espanso folder in iCloud Drive and shows the keyboard's copy of it: the snippets it expands and
+/// Espanso's warnings (espanso-keyboard, plan step 5).
+final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate, UISearchResultsUpdating {
     private enum Row: Hashable {
-        case folder, reload, warning(String)
+        case folder, reload, warning(String), snippet(EspansoImport.Snippet)
+    }
+
+    private struct Section {
+        var title: String?
+        var rows: [Row]
     }
 
     private var summary = EspansoImport.lastSummary
     private var failure: String?
     private var copying = false
+    private let search = UISearchController()
+    private var query: String { search.searchBar.text?.trimmingCharacters(in: .whitespaces) ?? "" }
 
     /// The last copy in one line, for the Espanso section in Keyboard Settings.
     static var summary: String {
@@ -27,6 +35,14 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        search.searchResultsUpdater = self
+        search.obscuresBackgroundDuringPresentation = false
+        search.searchBar.placeholder = "Search Snippets"
+        navigationItem.searchController = search
+    }
+
+    func updateSearchResults(for searchController: UISearchController) {
+        tableView.reloadData()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -35,17 +51,25 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         tableView.reloadData()
     }
 
-    private var sections: [[Row]] {
-        let warnings = summary?.warnings.map(Row.warning) ?? []
-        return warnings.isEmpty ? [[.folder, .reload]] : [[.folder, .reload], warnings]
+    private var sections: [Section] {
+        var sections = [Section(rows: [.folder, .reload])]
+        let snippets = (summary?.items ?? []).filter(matchesQuery)
+        if !snippets.isEmpty { sections.append(Section(title: "Snippets", rows: snippets.map(Row.snippet))) }
+        let warnings = summary?.warnings ?? []
+        if !warnings.isEmpty, query.isEmpty { sections.append(Section(title: "Warnings", rows: warnings.map(Row.warning))) }
+        return sections
+    }
+
+    private func matchesQuery(_ snippet: EspansoImport.Snippet) -> Bool {
+        query.isEmpty || ([snippet.label] + snippet.triggers).contains { $0.localizedCaseInsensitiveContains(query) }
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].count }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rows.count }
 
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 1 ? "Warnings" : nil
+        sections[section].title
     }
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
@@ -64,7 +88,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         var content = UIListContentConfiguration.valueCell()
         cell.accessoryType = .none
         cell.selectionStyle = .default
-        switch sections[indexPath.section][indexPath.row] {
+        switch sections[indexPath.section].rows[indexPath.row] {
         case .folder:
             content.text = "Espanso Folder"
             content.secondaryText = summary?.folderName ?? EspansoImport.rememberedFolder?.lastPathComponent ?? "Choose…"
@@ -82,6 +106,14 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             content.text = warning
             content.textProperties.font = .preferredFont(forTextStyle: .footnote)
             cell.selectionStyle = .none
+        case .snippet(let snippet):
+            content = .subtitleCell()
+            content.text = snippet.triggers.joined(separator: "  ")
+            content.textProperties.font = .monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize, weight: .regular)
+            content.secondaryText = snippet.label
+            content.secondaryTextProperties.color = .secondaryLabel
+            content.secondaryTextProperties.numberOfLines = 2
+            cell.selectionStyle = .none
         }
         cell.contentConfiguration = content
         return cell
@@ -89,7 +121,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        switch sections[indexPath.section][indexPath.row] {
+        switch sections[indexPath.section].rows[indexPath.row] {
         case .folder:
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
             picker.delegate = self
@@ -98,7 +130,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         case .reload:
             guard let folder = EspansoImport.rememberedFolder, !copying else { return }
             copy(from: folder)
-        case .warning:
+        case .warning, .snippet:
             break
         }
     }

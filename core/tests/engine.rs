@@ -228,6 +228,13 @@ fn unsupported_snippets_are_reported() {
     // Only the markdown snippet: regex triggers are supported.
     assert_eq!(engine.warnings().len(), 1, "{:?}", engine.warnings());
     assert!(engine.warnings()[0].contains("markdown"));
+    // The markdown snippet isn't listed: the keyboard can't type it.
+    let listed: Vec<String> = engine
+        .search("")
+        .into_iter()
+        .flat_map(|s| s.triggers)
+        .collect();
+    assert_eq!(listed, vec!["x(?P<n>\\d)".to_string()]);
 }
 
 #[test]

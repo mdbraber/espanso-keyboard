@@ -13,6 +13,14 @@ nonisolated enum EspansoImport {
         var snippets: Int
         var warnings: [String]
         var date: Date
+        /// The snippets the keyboard expands; missing from copies made before it was added.
+        var items: [Snippet]?
+    }
+
+    /// One snippet as Espanso's search bar shows it.
+    struct Snippet: Codable, Hashable {
+        var triggers: [String]
+        var label: String
     }
 
     enum Failure: LocalizedError {
@@ -116,9 +124,10 @@ nonisolated enum EspansoImport {
             } catch EspansoError.Load(let message) {
                 throw Failure.load(message)
             }
+            let snippets = engine.search(query: "").map { Snippet(triggers: $0.triggers, label: $0.label) }
             let summary = Summary(
-                folderName: source.lastPathComponent, snippets: engine.search(query: "").count,
-                warnings: engine.warnings(), date: Date())
+                folderName: source.lastPathComponent, snippets: snippets.count,
+                warnings: engine.warnings(), date: Date(), items: snippets)
             try makeCurrent(name, in: root)
             removeOldCopies(in: root, keeping: name)
             UserDefaults.standard.set(try JSONEncoder().encode(summary), forKey: summaryKey)
