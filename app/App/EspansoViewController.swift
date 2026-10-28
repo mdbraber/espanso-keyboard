@@ -185,7 +185,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         do {
             try EspansoImport.remember(folder)
         } catch {
-            failure = error.localizedDescription
+            failure = describe(error)
             return tableView.reloadData()
         }
         copy(from: folder)
@@ -205,7 +205,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             copying = false
             switch result {
             case .success(let summary): self.summary = summary
-            case .failure(let error): failure = error.localizedDescription
+            case .failure(let error): failure = describe(error)
             }
             loadEngine()
         }

@@ -139,6 +139,16 @@ final class FeatureTests: EspansoTestCase {
         XCTAssertTrue(app.cells.staticTexts["Copied"].waitForExistence(timeout: 5))
     }
 
+    func testARegexSnippetPreviewsFromAnExample() {
+        openEspanso()
+        openSnippet(";hey(?P<name>[A-Z][a-z]+)!")
+        XCTAssertTrue(app.staticTexts["Type an example of the trigger above to see what it types."].exists)
+        app.textFields["espanso.example"].tap()
+        onNumbers = false
+        type(";heyAnna!")
+        XCTAssertTrue(app.staticTexts["Hey Anna!"].waitForExistence(timeout: 5), "the example's group fills the preview")
+    }
+
     func testAFavouriteComesFirstInThePanel() {
         openEspanso()
         openSnippet(";nest")

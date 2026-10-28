@@ -30,6 +30,12 @@ nonisolated enum EspansoShared {
         set { defaults?.set(newValue, forKey: "EspansoEnabled") }
     }
 
+    /// Set by the app while you type an example of a trigger, so the keyboard doesn't expand it there.
+    static var isPaused: Bool {
+        get { defaults?.bool(forKey: "EspansoPaused") ?? false }
+        set { defaults?.set(newValue, forKey: "EspansoPaused") }
+    }
+
     /// Favourite snippets, first in the keyboard's snippet panel.
     static var favourites: [String] {
         get { defaults?.stringArray(forKey: "EspansoFavourites") ?? [] }

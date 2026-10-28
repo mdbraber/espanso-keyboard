@@ -91,9 +91,11 @@ nonisolated enum EspansoImport {
 
     /// Copies the remembered folder again off the main thread, if one was picked.
     static func reloadInBackground() {
+        // Nothing in Hex is being edited as it comes to the front: the keyboard expands again.
+        EspansoShared.isPaused = false
         guard rememberedFolder != nil else { return }
         Task.detached(priority: .utility) {
-            do { try reload() } catch { log.error("copy failed: \(error.localizedDescription, privacy: .public)") }
+            do { try reload() } catch { log.error("copy failed: \(describe(error), privacy: .public)") }
         }
     }
 
@@ -103,10 +105,11 @@ nonisolated enum EspansoImport {
         #if DEBUG
         guard let path = UserDefaults.standard.string(forKey: "EspansoImport") else { return }
         EspansoShared.isEnabled = true
+        EspansoShared.isPaused = false
         EspansoShared.favourites = []
         if let root = EspansoLibrary.root { try? FileManager.default.removeItem(at: root.appending(path: "usage.json")) }
         do { try copy(from: URL(filePath: path, directoryHint: .isDirectory)) } catch {
-            log.error("copy of \(path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            log.error("copy of \(path, privacy: .public) failed: \(describe(error), privacy: .public)")
         }
         #endif
     }

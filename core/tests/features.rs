@@ -207,3 +207,21 @@ fn a_regex_snippet_is_counted_by_its_regex() {
     field.type_keys(";heyBo!");
     assert_eq!(field.expansions[0].snippet, ";hey(?P<name>[A-Z][a-z]+)!");
 }
+
+#[test]
+fn a_regex_snippet_previews_from_an_example_of_its_trigger() {
+    let engine = engine();
+    let hey = engine
+        .search("Hey {{name}}")
+        .into_iter()
+        .find(|s| s.is_regex)
+        .unwrap()
+        .id;
+    assert!(
+        engine.preview(hey).is_err(),
+        "without an example its group is missing"
+    );
+    assert_eq!(engine.preview_typed(hey, ";heyAnna!").unwrap(), "Hey Anna!");
+    let wrong = engine.preview_typed(hey, ";hello").unwrap_err().to_string();
+    assert!(wrong.contains("doesn't match"), "{wrong}");
+}

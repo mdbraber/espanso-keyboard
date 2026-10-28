@@ -21,7 +21,7 @@ final class EspansoExpander: TextExpander {
         do {
             engine = try EspansoEngine(configFolder: folder.path, scriptRunner: JavaScriptCoreScriptRunner())
         } catch {
-            Self.log.error("loading \(folder.path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            Self.log.error("loading \(folder.path, privacy: .public) failed: \(describe(error), privacy: .public)")
             return nil
         }
         engine.setClipboard(clipboard: PasteboardClipboard())
@@ -33,8 +33,11 @@ final class EspansoExpander: TextExpander {
 
     // MARK: TextExpander
 
+    /// Expanding is on, and the app isn't asking for a trigger to be typed as it is.
+    private var expands: Bool { isEnabled && !EspansoShared.isPaused }
+
     func typed(_ text: String) -> TextExpansion? {
-        guard isEnabled else { return nil }
+        guard expands else { return nil }
         return finish(engine.typeText(text: text))
     }
 
@@ -48,7 +51,7 @@ final class EspansoExpander: TextExpander {
     }
 
     func completions(before: String) -> [TextCompletion] {
-        guard isEnabled else { return [] }
+        guard expands else { return [] }
         return engine.complete(before: String(before.suffix(64))).map {
             TextCompletion(title: $0.trigger, id: Int($0.id), typed: Int($0.typed))
         }

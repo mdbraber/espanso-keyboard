@@ -4,7 +4,8 @@ import XCTest
 final class SnippetTests: EspansoTestCase {
     func testTodayExpandsToTheDate() {
         type(";today")
-        let today = Date().formatted(.iso8601.year().month().day().dateSeparator(.dash))
+        // Local time, as Espanso's date variable uses (the ISO 8601 style would be UTC).
+        let today = Date().formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day().dateSeparator(.dash))
         XCTAssertEqual(text, today)
     }
 

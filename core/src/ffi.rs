@@ -161,6 +161,15 @@ impl EspansoEngine {
         })
     }
 
+    /// What regex snippet `id` expands to for `typed`, an example of its trigger.
+    pub fn preview_typed(&self, id: i32, typed: String) -> Result<String, EspansoError> {
+        self.engine()
+            .preview_typed(id, &typed)
+            .map_err(|e| EspansoError::Render {
+                message: format!("{e:#}"),
+            })
+    }
+
     /// Snippets whose trigger `before` (the text before the caret) has begun.
     pub fn complete(&self, before: String) -> Vec<Completion> {
         self.engine().complete(&before)

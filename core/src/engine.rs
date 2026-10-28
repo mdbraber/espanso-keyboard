@@ -372,6 +372,38 @@ impl EspansoEngine {
         }
     }
 
+    /// What the regex snippet `id` expands to for `typed`, an example of its trigger: the
+    /// regex's named groups come from it, as when typing. Questions take their defaults.
+    pub fn preview_typed(&self, id: i32, typed: &str) -> Result<String> {
+        let Some(MatchCause::Regex(cause)) = self.matches.get(&id).map(|m| &m.cause) else {
+            return self.preview(id);
+        };
+        let regex = regex::Regex::new(&cause.regex)?;
+        let captures = regex
+            .captures(typed)
+            .ok_or_else(|| anyhow::anyhow!("{typed} doesn't match {}", cause.regex))?;
+        let trigger_vars = regex
+            .capture_names()
+            .flatten()
+            .filter_map(|name| Some((name.to_string(), captures.name(name)?.as_str().to_string())))
+            .collect();
+        let pending = Pending {
+            id,
+            trigger: typed.to_string(),
+            trigger_vars,
+            right_separator: None,
+            delete: 0,
+            rest: String::new(),
+            undo_trigger: None,
+            from_typing: false,
+            answers: Vec::new(),
+        };
+        match self.render(&pending, true)? {
+            Rendered::Done(body) => Ok(espanso::process_cursor_hint(body).0),
+            Rendered::Ask(_) | Rendered::Cancelled => anyhow::bail!("the snippet was cancelled"),
+        }
+    }
+
     /// Snippets whose trigger the text before the caret has begun: the longest typed
     /// start first. A trigger starting with a letter needs three characters at the
     /// start of a word, so ordinary words don't keep suggesting snippets; others, such

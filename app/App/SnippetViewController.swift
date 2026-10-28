@@ -3,34 +3,82 @@ import UIKit
 
 /// One snippet: its triggers, file, text and variables, a preview of what it types now, copying that, marking it a
 /// favourite, how often it was used, and editing it (espanso-keyboard, plan step 6, items 1, 6, 9, 11 and 12).
-final class SnippetViewController: UITableViewController {
+final class SnippetViewController: UITableViewController, UITextFieldDelegate {
     private enum Row: Hashable {
-        case trigger(String), file, text, variable(String), preview, copy, favourite, usage, edit
+        case trigger(String), file, text, variable(String), example, preview, copy, favourite, usage, edit
     }
 
     private let snippet: SnippetSummary
     private let engine: EspansoEngine
-    private var preview: String
+    private var preview = ""
     private var copied = false
+    /// For a regex snippet: an example of its trigger, which gives the preview its groups.
+    private var example = ""
+    private let exampleField = UITextField()
     private var key: String { snippet.triggers[0] }
 
     init(snippet: SnippetSummary, engine: EspansoEngine) {
         self.snippet = snippet
         self.engine = engine
-        preview = Self.render(snippet, engine)
         super.init(style: .insetGrouped)
         title = snippet.triggers[0]
+        preview = render()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    private static func render(_ snippet: SnippetSummary, _ engine: EspansoEngine) -> String {
-        do { return try engine.preview(id: snippet.id) } catch { return "Can't render it: \(error.localizedDescription)" }
+    /// What the snippet types now. A regex snippet's groups come from what is typed, so it needs an example.
+    private func render() -> String {
+        do {
+            guard snippet.isRegex else { return try engine.preview(id: snippet.id) }
+            guard !example.isEmpty else { return "Type an example of the trigger above to see what it types." }
+            return try engine.previewTyped(id: snippet.id, typed: example)
+        } catch {
+            return "Can't render it: \(describe(error))"
+        }
     }
+
+    private var canCopy: Bool { !snippet.isRegex || !example.isEmpty }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        exampleField.placeholder = "Example, as you'd type it"
+        exampleField.font = .monospacedSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize, weight: .regular)
+        exampleField.autocapitalizationType = .none
+        exampleField.autocorrectionType = .no
+        exampleField.smartQuotesType = .no
+        exampleField.smartDashesType = .no
+        exampleField.clearButtonMode = .whileEditing
+        exampleField.accessibilityIdentifier = "espanso.example"
+        exampleField.delegate = self
+        // Leaving Hex with the field still active must not leave the keyboard paused in other apps.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.view.endEditing(true) } }
+        exampleField.addAction(UIAction { [unowned self] _ in exampleChanged() }, for: .editingChanged)
+    }
+
+    // The keyboard is Hex: it would expand the example. It doesn't while the field is being edited.
+    func textFieldDidBeginEditing(_ textField: UITextField) { EspansoShared.isPaused = true }
+    func textFieldDidEndEditing(_ textField: UITextField) { EspansoShared.isPaused = false }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        EspansoShared.isPaused = false
+    }
+
+    /// Renders again for the new example, updating only the preview rows so the field keeps the keyboard.
+    private func exampleChanged() {
+        example = exampleField.text ?? ""
+        preview = render()
+        copied = false
+        let rows = sections.enumerated().flatMap { section, content in
+            content.rows.enumerated().compactMap { row, kind in
+                kind == .preview || kind == .copy ? IndexPath(row: row, section: section) : nil
+            }
+        }
+        tableView.reconfigureRows(at: rows)
     }
 
     private var sections: [(title: String?, footer: String?, rows: [Row])] {
@@ -39,7 +87,11 @@ final class SnippetViewController: UITableViewController {
             ("Text", nil, [.text]),
         ]
         if !snippet.vars.isEmpty { sections.append(("Variables", nil, snippet.vars.map(Row.variable))) }
-        sections.append(("Preview", "Questions take their first choice or default here.", [.preview, .copy]))
+        if snippet.isRegex {
+            sections.append(("Preview", "The regex’s groups come from the example; questions take their first choice or default.", [.example, .preview, .copy]))
+        } else {
+            sections.append(("Preview", "Questions take their first choice or default here.", [.preview, .copy]))
+        }
         sections.append((nil, nil, [.favourite, .usage, .file]))
         if EspansoImport.sourceFolder != nil {
             sections.append((nil, "Changes go to \(snippet.file) in your Espanso folder, so Espanso on the Mac gets them too.", [.edit]))
@@ -72,13 +124,29 @@ final class SnippetViewController: UITableViewController {
         case .variable(let name):
             content.text = name
             content.textProperties.font = mono
+        case .example:
+            cell.contentConfiguration = nil
+            exampleField.translatesAutoresizingMaskIntoConstraints = false
+            if exampleField.superview !== cell.contentView {
+                exampleField.removeFromSuperview()
+                cell.contentView.addSubview(exampleField)
+                let margins = cell.contentView.layoutMarginsGuide
+                NSLayoutConstraint.activate([
+                    exampleField.topAnchor.constraint(equalTo: margins.topAnchor),
+                    exampleField.bottomAnchor.constraint(equalTo: margins.bottomAnchor),
+                    exampleField.leadingAnchor.constraint(equalTo: margins.leadingAnchor),
+                    exampleField.trailingAnchor.constraint(equalTo: margins.trailingAnchor),
+                    exampleField.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
+                ])
+            }
+            return cell
         case .preview:
             content.text = preview
             content.textProperties.color = .secondaryLabel
         case .copy:
             content.text = copied ? "Copied" : "Copy Result"
-            content.textProperties.color = .tintColor
-            cell.selectionStyle = .default
+            content.textProperties.color = canCopy ? .tintColor : .secondaryLabel
+            cell.selectionStyle = canCopy ? .default : .none
         case .favourite:
             content.text = "Favourite"
             let toggle = UISwitch()
@@ -112,7 +180,8 @@ final class SnippetViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
         switch sections[indexPath.section].rows[indexPath.row] {
         case .copy:
-            preview = Self.render(snippet, engine)
+            guard canCopy else { return }
+            preview = render()
             UIPasteboard.general.string = preview
             copied = true
             tableView.reloadData()
@@ -263,7 +332,7 @@ final class NewSnippetViewController: UITableViewController {
 
 extension UIViewController {
     func showError(_ error: Error) {
-        showError(message: error.localizedDescription)
+        showError(message: describe(error))
     }
 
     func showError(message: String) {
