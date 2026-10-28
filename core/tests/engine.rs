@@ -17,7 +17,8 @@ fn today_expands_to_the_date() {
         Expansion {
             delete_count: 6,
             insert: today,
-            cursor_offset: 0
+            cursor_offset: 0,
+            snippet: ";today".into(),
         }
     );
 }
@@ -52,7 +53,8 @@ fn cursor_hint_gives_the_cursor_offset() {
         Expansion {
             delete_count: 5,
             insert: "Dear ,".into(),
-            cursor_offset: 1
+            cursor_offset: 1,
+            snippet: ";dear".into(),
         }
     );
     assert_eq!(field.text(), "Dear |,");
@@ -72,7 +74,8 @@ fn backspace_right_after_an_expansion_restores_the_trigger() {
         Expansion {
             delete_count: 8,
             insert: ";hi".into(),
-            cursor_offset: 0
+            cursor_offset: 0,
+            snippet: String::new(),
         }
     );
     // Only once: the next backspace deletes normally.
@@ -200,10 +203,12 @@ fn snippet_does_not_expand_when_its_script_cannot_run() {
 }
 
 #[test]
-fn choice_variables_cancel_without_a_picker() {
+fn choice_variables_wait_for_an_answer() {
+    // Answering is in tests/features.rs.
     let mut field = Field::new();
     field.type_keys(";pick");
     assert_eq!(field.text(), ";pick|");
+    assert!(field.engine.prompt().is_some());
 }
 
 #[test]

@@ -15,17 +15,18 @@ use espanso_match::event::{Event, Key};
 use espanso_match::regex::{RegexMatcher, RegexMatcherOptions, RegexMatcherState};
 use espanso_match::rolling::matcher::{RollingMatcher, RollingMatcherOptions, RollingMatcherState};
 use espanso_match::{MatchResult, Matcher};
-use espanso_render::extension::choice::{
-    Choice, ChoiceExtension, ChoiceSelector, ChoiceSelectorResult,
-};
+use espanso_render::extension::choice::ChoiceExtension;
+use espanso_render::extension::clipboard::{ClipboardExtension, ClipboardProvider};
 use espanso_render::extension::date::{DateExtension, DefaultLocaleProvider};
 use espanso_render::extension::echo::EchoExtension;
+use espanso_render::extension::form::FormExtension;
 use espanso_render::extension::random::RandomExtension;
 use espanso_render::{Context, RenderOptions, RenderResult, Renderer, Template, Variable};
 use self_cell::self_cell;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::espanso;
+use crate::prompt::{Answer, Prompt, Prompter};
 use crate::script::{ScriptExtension, ScriptRunner};
 
 /// What the keyboard does to the text field for one expansion, or for undoing one.
@@ -37,15 +38,69 @@ pub struct Expansion {
     pub insert: String,
     /// Characters (grapheme clusters) to move the cursor left after inserting; 0 if none.
     pub cursor_offset: u32,
+    /// The snippet's first trigger (or its regex), for usage counts; empty for an undo.
+    pub snippet: String,
 }
 
 /// One snippet, for searching and listing.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct SnippetSummary {
+    /// Valid until the folder is loaded again.
+    pub id: i32,
+    /// Its triggers, or its regex for a regex trigger.
     pub triggers: Vec<String>,
+    pub is_regex: bool,
     /// The match's label, or its replacement text when it has none (Espanso's
     /// `Match::description`).
     pub label: String,
+    /// The replacement text as written, with `{{variables}}`.
+    pub replace: String,
+    /// The names of its variables, in order.
+    pub vars: Vec<String>,
+    /// The match file it comes from, relative to `match/`, such as `base.yml`. Matches
+    /// imported into a file count as that file's.
+    pub file: String,
+}
+
+/// A snippet whose trigger the text before the caret begins (plan step 6, suggestions).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Completion {
+    pub id: i32,
+    pub trigger: String,
+    /// How many characters (grapheme clusters) of the trigger are already typed: what
+    /// accepting the completion replaces.
+    pub typed: u32,
+    pub label: String,
+}
+
+/// The clipboard, for `clipboard` variables; supplied by the host.
+pub trait ClipboardReader: Send + Sync {
+    fn text(&self) -> Option<String>;
+}
+
+/// An expansion on its way: rendered, or waiting for the answers to its questions.
+struct Pending {
+    id: i32,
+    /// The trigger as typed, for `propagate_case`.
+    trigger: String,
+    /// A regex trigger's named groups.
+    trigger_vars: HashMap<String, String>,
+    right_separator: Option<String>,
+    /// Characters to delete before inserting: the typed trigger, or a completion's start.
+    delete: u32,
+    /// Text typed in the same key press after the trigger.
+    rest: String,
+    /// What undo puts back, when undo is possible.
+    undo_trigger: Option<String>,
+    /// From typing: the matchers then see the expansion as a word separator.
+    from_typing: bool,
+    answers: Vec<Answer>,
+}
+
+enum Rendered {
+    Done(String),
+    Ask(Prompt),
+    Cancelled,
 }
 
 /// Espanso's two matchers, which see every key (espanso/src/cli/worker/engine/mod.rs).
@@ -93,6 +148,12 @@ pub struct EspansoEngine {
     last_error: Option<String>,
     config_folder: PathBuf,
     script_runner: Arc<dyn ScriptRunner>,
+    clipboard: Option<Arc<dyn ClipboardReader>>,
+    /// The match file of each match.
+    files: HashMap<i32, String>,
+    /// An expansion waiting for an answer, and its question.
+    pending: Option<Pending>,
+    prompt: Option<Prompt>,
 }
 
 impl EspansoEngine {
@@ -133,6 +194,15 @@ impl EspansoEngine {
             matches.insert(m.id, (*m).clone());
         }
 
+        // Which file each match comes from: query the files one by one.
+        let mut files = HashMap::new();
+        for path in config.match_paths() {
+            let name = match_file_name(path);
+            for m in match_store.query(std::slice::from_ref(path)).matches {
+                files.entry(m.id).or_insert_with(|| name.clone());
+            }
+        }
+
         let global_vars = set
             .global_vars
             .iter()
@@ -168,14 +238,20 @@ impl EspansoEngine {
             last_error: None,
             config_folder: config_folder.to_owned(),
             script_runner,
+            clipboard: None,
+            files,
+            pending: None,
+            prompt: None,
         })
     }
 
     /// One key press: a character, or `"\n"` for return. Call after the keyboard has
     /// inserted it. Returns an expansion when it completes a trigger.
     pub fn type_text(&mut self, text: &str) -> Option<Expansion> {
-        // Any key other than backspace ends the chance to undo (undo.rs).
+        // Any key other than backspace ends the chance to undo (undo.rs), and drops a
+        // question left unanswered.
         self.undo = None;
+        self.cancel_prompt();
 
         let mut expansion = None;
         // Espanso's matcher compares one Unicode scalar per event (RollingMatch::from_string).
@@ -202,6 +278,7 @@ impl EspansoEngine {
     /// undoes the last expansion when `undo_backspace` is on and nothing was typed since;
     /// the keyboard then applies it instead of deleting a character.
     pub fn backspace(&mut self) -> Option<Expansion> {
+        self.cancel_prompt();
         // matcher.rs: backspace steps the matcher back one key.
         self.matcher.with_dependent_mut(|_, history| {
             history.pop_back();
@@ -217,6 +294,7 @@ impl EspansoEngine {
             delete_count: graphemes(&record.inserted),
             insert: record.trigger,
             cursor_offset: 0,
+            snippet: String::new(),
         })
     }
 
@@ -226,6 +304,104 @@ impl EspansoEngine {
         self.matcher
             .with_dependent_mut(|_, history| history.clear());
         self.undo = None;
+        self.cancel_prompt();
+    }
+
+    /// The clipboard for `clipboard` variables; without one they fail.
+    pub fn set_clipboard(&mut self, clipboard: Arc<dyn ClipboardReader>) {
+        self.clipboard = Some(clipboard);
+    }
+
+    /// The question the last trigger asks before it can expand (a `choice` or `form`
+    /// variable), if any. [`answer`](Self::answer) it, or type on to drop it.
+    pub fn prompt(&self) -> Option<&Prompt> {
+        self.prompt.as_ref()
+    }
+
+    /// Answers the question from [`prompt`](Self::prompt). Returns the expansion, or
+    /// `None` when the snippet asks another question (see `prompt` again) or failed.
+    pub fn answer(&mut self, answer: Answer) -> Option<Expansion> {
+        let mut pending = self.pending.take()?;
+        self.prompt = None;
+        pending.answers.push(answer);
+        self.produce(pending)
+    }
+
+    /// Drops the question from [`prompt`](Self::prompt) without expanding.
+    pub fn cancel_prompt(&mut self) {
+        self.pending = None;
+        self.prompt = None;
+    }
+
+    /// Expands the snippet `id` at the caret, after deleting `delete_count` characters:
+    /// a snippet picked from a list, or a completion (then `delete_count` is its
+    /// `typed`). Like a trigger, it may ask a question first.
+    pub fn insert_snippet(&mut self, id: i32, delete_count: u32) -> Option<Expansion> {
+        self.reset();
+        let trigger = self.snippet_key(id);
+        self.produce(Pending {
+            id,
+            trigger,
+            trigger_vars: HashMap::new(),
+            right_separator: None,
+            delete: delete_count,
+            rest: String::new(),
+            undo_trigger: None,
+            from_typing: false,
+            answers: Vec::new(),
+        })
+    }
+
+    /// What the snippet `id` expands to now, with questions answered by their defaults
+    /// (the first choice, the fields' defaults) and without the `$|$` marker.
+    pub fn preview(&self, id: i32) -> Result<String> {
+        let pending = Pending {
+            id,
+            trigger: self.snippet_key(id),
+            trigger_vars: HashMap::new(),
+            right_separator: None,
+            delete: 0,
+            rest: String::new(),
+            undo_trigger: None,
+            from_typing: false,
+            answers: Vec::new(),
+        };
+        match self.render(&pending, true)? {
+            Rendered::Done(body) => Ok(espanso::process_cursor_hint(body).0),
+            Rendered::Ask(_) | Rendered::Cancelled => anyhow::bail!("the snippet was cancelled"),
+        }
+    }
+
+    /// Snippets whose trigger the text before the caret has begun: the longest typed
+    /// start first. A trigger starting with a letter needs three characters at the
+    /// start of a word, so ordinary words don't keep suggesting snippets; others, such
+    /// as `;jitsi`, need two.
+    pub fn complete(&self, before: &str) -> Vec<Completion> {
+        let mut completions = Vec::new();
+        for (id, m) in &self.matches {
+            let MatchCause::Trigger(cause) = &m.cause else {
+                continue;
+            };
+            if unsupported(m).is_some() {
+                continue;
+            }
+            for trigger in &cause.triggers {
+                if let Some(typed) = typed_start(before, trigger, cause.propagate_case) {
+                    completions.push(Completion {
+                        id: *id,
+                        trigger: trigger.clone(),
+                        typed,
+                        label: m.description().to_string(),
+                    });
+                }
+            }
+        }
+        completions.sort_by(|a, b| {
+            b.typed
+                .cmp(&a.typed)
+                .then_with(|| a.trigger.cmp(&b.trigger))
+        });
+        completions
     }
 
     /// Snippets the keyboard can expand whose trigger, label or search terms contain
@@ -244,12 +420,26 @@ impl EspansoEngine {
                         .iter()
                         .any(|t| t.to_lowercase().contains(&query))
             })
-            .map(|m| SnippetSummary {
-                triggers: match &m.cause {
-                    MatchCause::Regex(cause) => vec![cause.regex.clone()],
-                    cause => cause.search_terms().iter().map(|t| t.to_string()).collect(),
-                },
-                label: m.description().to_string(),
+            .map(|m| {
+                let (replace, vars) = match &m.effect {
+                    MatchEffect::Text(text) => (
+                        text.replace.clone(),
+                        text.vars.iter().map(|v| v.name.clone()).collect(),
+                    ),
+                    _ => (String::new(), Vec::new()),
+                };
+                SnippetSummary {
+                    id: m.id,
+                    triggers: match &m.cause {
+                        MatchCause::Regex(cause) => vec![cause.regex.clone()],
+                        cause => cause.search_terms().iter().map(|t| t.to_string()).collect(),
+                    },
+                    is_regex: matches!(m.cause, MatchCause::Regex(_)),
+                    label: m.description().to_string(),
+                    replace,
+                    vars,
+                    file: self.files.get(&m.id).cloned().unwrap_or_default(),
+                }
             })
             .collect()
     }
@@ -284,28 +474,12 @@ impl EspansoEngine {
         })
     }
 
-    /// From a detected trigger to an expansion: cause compensation, render, cursor hint
-    /// and undo record, as in Espanso's middleware of those names. `rest` is text typed in
-    /// the same key press after the trigger.
+    /// From a detected trigger to an expansion, as Espanso's cause compensation
+    /// middleware prepares it. `rest` is text typed in the same key press after the
+    /// trigger.
     fn expand(&mut self, result: MatchResult<i32>, rest: &str) -> Option<Expansion> {
         // Several matches with the same trigger: Espanso asks which one; the keyboard has
         // no picker yet and takes the first.
-        self.last_error = None;
-        let body = match self.render(result.id, &result.trigger, result.vars) {
-            Ok(Some(body)) => body,
-            Ok(None) => return None,
-            Err(err) => {
-                self.last_error = Some(format!("{}: {err:#}", result.trigger));
-                return None;
-            }
-        };
-
-        // render.rs: the right separator is typed again after the replacement.
-        let body = match &result.right_separator {
-            Some(separator) => format!("{body}{separator}"),
-            None => body,
-        };
-        let (body, cursor_hint) = espanso::process_cursor_hint(body);
 
         // action.rs (TriggerCompensation): delete the trigger but keep the left separator.
         let typed = match &result.left_separator {
@@ -314,23 +488,68 @@ impl EspansoEngine {
                 .strip_prefix(separator.as_str())
                 .unwrap_or(&result.trigger),
             None => &result.trigger,
+        }
+        .to_string();
+
+        self.produce(Pending {
+            id: result.id,
+            delete: graphemes(&typed) + graphemes(rest),
+            // undo.rs. Unlike Espanso, undo puts back only what was deleted: Espanso
+            // re-types the left separator too, doubling it (docs/decisions.md, "Undo
+            // restores only the deleted text").
+            undo_trigger: rest.is_empty().then(|| typed.clone()),
+            trigger: result.trigger,
+            trigger_vars: result.vars,
+            right_separator: result.right_separator,
+            rest: rest.to_string(),
+            from_typing: true,
+            answers: Vec::new(),
+        })
+    }
+
+    /// Renders a pending expansion and turns it into an expansion: render, cursor hint
+    /// and undo record, as in Espanso's middleware of those names. A question leaves it
+    /// pending (see `prompt`).
+    fn produce(&mut self, pending: Pending) -> Option<Expansion> {
+        self.last_error = None;
+        let body = match self.render(&pending, false) {
+            Ok(Rendered::Done(body)) => body,
+            Ok(Rendered::Ask(prompt)) => {
+                self.prompt = Some(prompt);
+                self.pending = Some(pending);
+                return None;
+            }
+            Ok(Rendered::Cancelled) => return None,
+            Err(err) => {
+                self.last_error = Some(format!("{}: {err:#}", pending.trigger));
+                return None;
+            }
         };
 
+        // render.rs: the right separator is typed again after the replacement.
+        let body = match &pending.right_separator {
+            Some(separator) => format!("{body}{separator}"),
+            None => body,
+        };
+        let (body, cursor_hint) = espanso::process_cursor_hint(body);
+        let rest = &pending.rest;
+
         let expansion = Expansion {
-            delete_count: graphemes(typed) + graphemes(rest),
+            delete_count: pending.delete,
             insert: format!("{body}{rest}"),
             cursor_offset: cursor_hint.map_or(0, |moves| moves as u32 + graphemes(rest)),
+            snippet: self.snippet_key(pending.id),
         };
 
         // matcher.rs: the injected match acts as a word separator.
-        self.feed(Event::VirtualSeparator);
+        if pending.from_typing {
+            self.feed(Event::VirtualSeparator);
+        }
 
-        // undo.rs: a cursor hint disables undo. Unlike Espanso, undo puts back only what
-        // was deleted: Espanso re-types the left separator too, doubling it
-        // (docs/decisions.md, "Undo restores only the deleted text").
-        if cursor_hint.is_none() && rest.is_empty() {
+        // undo.rs: a cursor hint disables undo.
+        if let (None, Some(trigger)) = (cursor_hint, pending.undo_trigger) {
             self.undo = Some(UndoRecord {
-                trigger: typed.to_string(),
+                trigger,
                 inserted: body,
             });
         }
@@ -338,15 +557,19 @@ impl EspansoEngine {
         Some(expansion)
     }
 
-    /// render/mod.rs (`RendererAdapter::render`). `trigger_vars` are a regex trigger's
-    /// named groups. `Ok(None)` means the snippet was cancelled, for example a choice with
-    /// nothing chosen.
-    fn render(
-        &self,
-        id: i32,
-        trigger: &str,
-        trigger_vars: HashMap<String, String>,
-    ) -> Result<Option<String>> {
+    /// A snippet's first trigger, or its regex.
+    fn snippet_key(&self, id: i32) -> String {
+        match self.matches.get(&id).map(|m| &m.cause) {
+            Some(MatchCause::Trigger(cause)) => cause.triggers.first().cloned().unwrap_or_default(),
+            Some(MatchCause::Regex(cause)) => cause.regex.clone(),
+            _ => String::new(),
+        }
+    }
+
+    /// render/mod.rs (`RendererAdapter::render`), with the pending expansion's answers.
+    /// `use_defaults` answers questions with their defaults instead of asking.
+    fn render(&self, pending: &Pending, use_defaults: bool) -> Result<Rendered> {
+        let id = pending.id;
         let m = self
             .matches
             .get(&id)
@@ -360,31 +583,39 @@ impl EspansoEngine {
             .map(|&i| &self.templates[i])
             .ok_or_else(|| anyhow::anyhow!("match has no text"))?;
 
-        // Extensions as in espanso/src/cli/worker/engine/mod.rs, minus those that need the
-        // desktop: no shell, so `shell` variables fail. Clipboard and choice pickers
-        // arrive in plan step 6.
+        // Extensions as in espanso/src/cli/worker/engine/mod.rs, minus `shell`, which
+        // needs the desktop, so `shell` variables fail.
         let locale_provider = DefaultLocaleProvider::new();
         let date = DateExtension::new(&locale_provider);
         let echo = EchoExtension::new();
         let random = RandomExtension::new();
         let script = ScriptExtension::new(&self.config_folder, &*self.script_runner);
-        let choice = ChoiceExtension::new(&NoChoiceSelector);
-        let renderer = espanso_render::create(vec![&date, &echo, &random, &script, &choice]);
+        let prompter = Prompter::new(&pending.answers, use_defaults);
+        let choice = ChoiceExtension::new(&prompter);
+        let form = FormExtension::new(&prompter);
+        let clipboard_reader = ClipboardAdapter(self.clipboard.as_deref());
+        let clipboard = ClipboardExtension::new(&clipboard_reader);
+        let renderer = espanso_render::create(vec![
+            &clipboard, &date, &echo, &random, &script, &form, &choice,
+        ]);
 
         let context = Context {
             global_vars: self.global_vars.iter().collect(),
             templates: self.templates.iter().collect(),
         };
         let options = RenderOptions {
-            casing_style: espanso::casing_style(m, trigger),
+            casing_style: espanso::casing_style(m, &pending.trigger),
         };
 
-        let augmented = espanso::augment_template(template, trigger_vars);
+        let augmented = espanso::augment_template(template, pending.trigger_vars.clone());
         let template = augmented.as_ref().unwrap_or(template);
 
         match renderer.render(template, &context, &options) {
-            RenderResult::Success(body) => Ok(Some(body)),
-            RenderResult::Aborted => Ok(None),
+            RenderResult::Success(body) => Ok(Rendered::Done(body)),
+            RenderResult::Aborted => Ok(match prompter.asked.take() {
+                Some(prompt) => Rendered::Ask(prompt),
+                None => Rendered::Cancelled,
+            }),
             RenderResult::Error(err) => Err(err),
         }
     }
@@ -407,14 +638,63 @@ fn unsupported(m: &Match) -> Option<String> {
     ))
 }
 
-/// The keyboard has no choice picker yet (plan step 6), so `choice` variables cancel the
-/// snippet.
-struct NoChoiceSelector;
+struct ClipboardAdapter<'a>(Option<&'a dyn ClipboardReader>);
 
-impl ChoiceSelector for NoChoiceSelector {
-    fn show(&self, _: &[Choice]) -> ChoiceSelectorResult {
-        ChoiceSelectorResult::Aborted
+impl ClipboardProvider for ClipboardAdapter<'_> {
+    fn get_text(&self) -> Option<String> {
+        self.0.and_then(|reader| reader.text())
     }
+}
+
+/// A match file's name relative to `match/`, from one of the configuration's match
+/// paths.
+fn match_file_name(path: &str) -> String {
+    let path = Path::new(path);
+    let components: Vec<_> = path.components().collect();
+    match components.iter().rposition(|c| c.as_os_str() == "match") {
+        Some(i) => components[i + 1..]
+            .iter()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+        None => path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+    }
+}
+
+/// How many characters of `trigger` end `before`, if it's a start worth completing:
+/// shorter than the whole trigger, at least two characters, or three at the start of a
+/// word for a trigger starting with a letter.
+fn typed_start(before: &str, trigger: &str, ignore_case: bool) -> Option<u32> {
+    let trigger_chars: Vec<char> = trigger.chars().collect();
+    let starts_with_letter = trigger_chars.first().is_some_and(|c| c.is_alphanumeric());
+    let minimum = if starts_with_letter { 3 } else { 2 };
+    let before_chars: Vec<char> = before.chars().collect();
+    let same = |a: char, b: char| a == b || (ignore_case && a.to_lowercase().eq(b.to_lowercase()));
+    for length in (minimum..trigger_chars.len()).rev() {
+        if length > before_chars.len() {
+            continue;
+        }
+        let tail = &before_chars[before_chars.len() - length..];
+        if !tail
+            .iter()
+            .zip(&trigger_chars[..length])
+            .all(|(a, b)| same(*a, *b))
+        {
+            continue;
+        }
+        let preceding = before_chars
+            .len()
+            .checked_sub(length + 1)
+            .map(|i| before_chars[i]);
+        if starts_with_letter && preceding.is_some_and(|c| c.is_alphanumeric()) {
+            continue;
+        }
+        return Some(graphemes(&tail.iter().collect::<String>()));
+    }
+    None
 }
 
 fn graphemes(text: &str) -> u32 {

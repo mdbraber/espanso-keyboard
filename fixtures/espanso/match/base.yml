@@ -40,6 +40,36 @@ matches:
         params:
           args: [bun, "%CONFIG%/scripts/greet.js"]
 
+  # Questions: two choices in a row, and a form with a text and a choice field.
+  - trigger: ";two"
+    replace: "{{size}} {{fruit}}"
+    vars:
+      - name: size
+        type: choice
+        params:
+          values: [klein, groot]
+      - name: fruit
+        type: choice
+        params:
+          values:
+            - label: Appel
+              id: appel
+            - label: Peer
+              id: peer
+  - trigger: ";form"
+    form: "Hoi [[name]], tot [[when]]!"
+    form_fields:
+      when:
+        type: choice
+        values: [morgen, vandaag]
+        default: morgen
+
+  - trigger: ";clip"
+    replace: "Gekopieerd: {{clip}}"
+    vars:
+      - name: clip
+        type: clipboard
+
   # Regex triggers: named groups become variables, also for scripts.
   - regex: ";hey(?P<name>[A-Z][a-z]+)!"
     replace: "Hey {{name}}!"

@@ -7,13 +7,15 @@
 mod engine;
 mod espanso;
 pub mod ffi;
+mod prompt;
 mod script;
 
 uniffi::setup_scaffolding!();
 
 use std::path::Path;
 
-pub use engine::{EspansoEngine, Expansion, SnippetSummary};
+pub use engine::{ClipboardReader, Completion, EspansoEngine, Expansion, SnippetSummary};
+pub use prompt::{Answer, ChoiceItem, FieldKind, FormField, Prompt};
 pub use script::{ScriptOutput, ScriptRunner};
 
 use anyhow::Result;

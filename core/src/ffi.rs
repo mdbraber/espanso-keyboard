@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::engine::{Expansion, SnippetSummary};
+use crate::engine::{Completion, Expansion, SnippetSummary};
+use crate::prompt::{Answer, Prompt};
 use crate::script::ScriptOutput;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -17,6 +18,9 @@ pub enum EspansoError {
     /// The script couldn't run at all (missing file, time limit).
     #[error("{message}")]
     Script { message: String },
+    /// The snippet couldn't be rendered.
+    #[error("{message}")]
+    Render { message: String },
 }
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for EspansoError {
@@ -38,6 +42,20 @@ pub trait ScriptRunner: Send + Sync {
         argv: Vec<String>,
         env: HashMap<String, String>,
     ) -> Result<ScriptOutput, EspansoError>;
+}
+
+/// The clipboard's text, for `clipboard` variables; implemented in Swift with UIPasteboard.
+#[uniffi::export(callback_interface)]
+pub trait Clipboard: Send + Sync {
+    fn text(&self) -> Option<String>;
+}
+
+struct ForeignClipboard(Box<dyn Clipboard>);
+
+impl crate::engine::ClipboardReader for ForeignClipboard {
+    fn text(&self) -> Option<String> {
+        self.0.text()
+    }
 }
 
 struct ForeignRunner(Box<dyn ScriptRunner>);
@@ -109,6 +127,43 @@ impl EspansoEngine {
     /// Why the last completed trigger didn't expand, if it didn't.
     pub fn last_error(&self) -> Option<String> {
         self.engine().last_error().map(str::to_string)
+    }
+
+    /// The clipboard for `clipboard` variables.
+    pub fn set_clipboard(&self, clipboard: Box<dyn Clipboard>) {
+        self.engine()
+            .set_clipboard(Arc::new(ForeignClipboard(clipboard)));
+    }
+
+    /// The question a trigger asks before it expands (`choice`, `form`), if any.
+    pub fn prompt(&self) -> Option<Prompt> {
+        self.engine().prompt().cloned()
+    }
+
+    /// Answers `prompt`. Returns the expansion, or nil when another question follows.
+    pub fn answer(&self, answer: Answer) -> Option<Expansion> {
+        self.engine().answer(answer)
+    }
+
+    pub fn cancel_prompt(&self) {
+        self.engine().cancel_prompt()
+    }
+
+    /// Expands snippet `id` at the caret after deleting `delete_count` characters.
+    pub fn insert_snippet(&self, id: i32, delete_count: u32) -> Option<Expansion> {
+        self.engine().insert_snippet(id, delete_count)
+    }
+
+    /// What snippet `id` expands to now, questions answered with their defaults.
+    pub fn preview(&self, id: i32) -> Result<String, EspansoError> {
+        self.engine().preview(id).map_err(|e| EspansoError::Render {
+            message: format!("{e:#}"),
+        })
+    }
+
+    /// Snippets whose trigger `before` (the text before the caret) has begun.
+    pub fn complete(&self, before: String) -> Vec<Completion> {
+        self.engine().complete(&before)
     }
 }
 
