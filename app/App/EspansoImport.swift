@@ -18,11 +18,19 @@ nonisolated enum EspansoImport {
     enum Failure: LocalizedError {
         case noAppGroup
         case noFolder
+        /// The picked folder has no `config` folder; `contents` is what it does have.
+        case notEspanso(folder: String, contents: [String])
+        /// Espanso couldn't load the copy.
+        case load(String)
 
         var errorDescription: String? {
             switch self {
             case .noAppGroup: "The app group isn't available, so the keyboard can't get a copy."
             case .noFolder: "Choose your Espanso folder first."
+            case .notEspanso(let folder, let contents):
+                "“\(folder)” has no config folder, so it isn't an Espanso folder. Pick the one with config and match in it. "
+                    + (contents.isEmpty ? "“\(folder)” looks empty." : "“\(folder)” has: \(contents.joined(separator: ", ")).")
+            case .load(let message): "Espanso couldn't load it: \(message)."
             }
         }
     }
@@ -89,6 +97,10 @@ nonisolated enum EspansoImport {
         defer { if accessing { source.stopAccessingSecurityScopedResource() } }
 
         let files = FileManager.default
+        guard files.fileExists(atPath: source.appending(path: "config").path) else {
+            let contents = (try? files.contentsOfDirectory(atPath: source.path)) ?? []
+            throw Failure.notEspanso(folder: source.lastPathComponent, contents: contents.sorted())
+        }
         try files.createDirectory(at: root, withIntermediateDirectories: true)
         let name = UUID().uuidString
         let copy = root.appending(path: name, directoryHint: .isDirectory)
@@ -98,7 +110,12 @@ nonisolated enum EspansoImport {
                 guard files.fileExists(atPath: from.path) else { continue }
                 try copyFolder(from, to: copy.appending(path: folder, directoryHint: .isDirectory))
             }
-            let engine = try EspansoEngine(configFolder: copy.path, scriptRunner: JavaScriptCoreScriptRunner())
+            let engine: EspansoEngine
+            do {
+                engine = try EspansoEngine(configFolder: copy.path, scriptRunner: JavaScriptCoreScriptRunner())
+            } catch EspansoError.Load(let message) {
+                throw Failure.load(message)
+            }
             let summary = Summary(
                 folderName: source.lastPathComponent, snippets: engine.search(query: "").count,
                 warnings: engine.warnings(), date: Date())
