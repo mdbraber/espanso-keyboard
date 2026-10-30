@@ -113,7 +113,7 @@ final class FeatureTests: EspansoTestCase {
 
     func testExpandingCanBeTurnedOff() {
         openEspanso()
-        app.switches["Expand Snippets"].tap()
+        app.switches["Expand While Typing"].tap()
         backToTryIt()
         type(";hi")
         XCTAssertEqual(text, ";hi")

@@ -76,10 +76,10 @@ final class FeatureSwitchTests: XCTestCase {
         back()
 
         open("Espanso Snippets")
-        XCTAssertTrue(app.switches["Expand Snippets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["Expand While Typing"].waitForExistence(timeout: 5))
         flip("Espanso Snippets")
-        XCTAssertFalse(app.switches["Expand Snippets"].exists)
+        XCTAssertFalse(app.switches["Expand While Typing"].exists)
         flip("Espanso Snippets")
-        XCTAssertTrue(app.switches["Expand Snippets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["Expand While Typing"].waitForExistence(timeout: 5))
     }
 }

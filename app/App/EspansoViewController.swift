@@ -78,7 +78,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         guard EspansoShared.isOn else { return [master] }
         var sections = [
             master,
-            Section(footer: "When Expand Snippets is off, Hex types your triggers as they are; the snippets button above the keys still works. Snippets Button shows or hides that button.", rows: [.enabled, .button]),
+            Section(footer: "Off, typing a trigger types it as written and the bar doesn’t suggest snippets; the snippets button above the keys still inserts them. Snippets Button shows or hides that button.", rows: [.enabled, .button]),
             Section(footer: folderFooter, rows: [.folder, .reload]),
         ]
         let all = snippets.values.sorted { ($0.file, $0.triggers[0]) < ($1.file, $1.triggers[0]) }
@@ -135,10 +135,10 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             cell.accessoryView = toggle
             cell.selectionStyle = .none
         case .enabled:
-            content.text = "Expand Snippets"
+            content.text = "Expand While Typing"
             let toggle = UISwitch()
             toggle.isOn = EspansoShared.isEnabled
-            toggle.accessibilityIdentifier = "Expand Snippets"
+            toggle.accessibilityIdentifier = "Expand While Typing"
             toggle.addAction(UIAction { [unowned toggle] _ in EspansoShared.isEnabled = toggle.isOn }, for: .valueChanged)
             cell.accessoryView = toggle
             cell.selectionStyle = .none

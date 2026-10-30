@@ -539,7 +539,8 @@ and shows its options only while it's on (the Settings app mirrors them):
   the microphone, and the Transcripts tab goes. On: Keep Mic On, and Transcripts (off
   stops saving dictations, offers to delete the kept ones, hides the tab).
 - Espanso Snippets off: the keyboard loads no snippets, so nothing expands, is suggested
-  or shown. On: Expand Snippets, Snippets Button.
+  or shown. On: Expand While Typing (off: triggers type as written and aren't suggested;
+  the snippets button still inserts snippets), Snippets Button.
 - Sources off: nothing is sent to any source and no hints show. On: the sources.
 - Learn My Taps off: the engine stops learning taps and the keyboard resets its touch
   model to the default, so autocorrect no longer adapts to your thumbs; nothing is
