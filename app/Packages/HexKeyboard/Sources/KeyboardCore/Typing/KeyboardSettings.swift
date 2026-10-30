@@ -10,6 +10,9 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var sound = true
     public var oneHanded = OneHanded.off
     public var language = Language.english
+    /// Whether the keyboard shares where your taps land with the app's Your Taps (espanso-keyboard). Autocorrect learns
+    /// from them either way.
+    public var sharesTaps = true
 
     public init() {}
 }

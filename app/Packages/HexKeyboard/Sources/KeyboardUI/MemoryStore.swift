@@ -71,6 +71,12 @@ public enum MemoryStore {
         notify_post(touchesChanged)
     }
 
+    /// Deletes the touches the keyboard shared, when Your Taps is switched off (espanso-keyboard).
+    public static func removeSharedTouches() {
+        if let sharedTouchesURL { try? FileManager.default.removeItem(at: sharedTouchesURL) }
+        notify_post(touchesChanged)
+    }
+
     /// Where your taps land, as the keyboard last shared it.
     public static func sharedTouches() -> TouchModel? {
         sharedTouchesURL.flatMap { try? JSONDecoder().decode(TouchModel.self, from: Data(contentsOf: $0)) }

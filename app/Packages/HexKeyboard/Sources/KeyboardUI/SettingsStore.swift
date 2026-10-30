@@ -20,6 +20,7 @@ public enum SettingsStore {
         ("characterPreview", \.characterPreview),
         ("haptics", \.haptics),
         ("sound", \.sound),
+        ("sharesTaps", \.sharesTaps),
     ]
 
     private static let oneHandedKey = "oneHanded"

@@ -168,7 +168,7 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.endSession()
         haptics.stop()
         TouchTrace.shared.flush()
-        if let memory = engine.corrector?.memory { MemoryStore.save(memory, language: language ?? .english, sharing: hasFullAccess) }
+        if let memory = engine.corrector?.memory { MemoryStore.save(memory, language: language ?? .english, sharing: sharesTaps) }
         MemoryStore.save(engine.emojiHistory)
         dictationTokens.forEach(Dictation.stopObserving)
         dictationTokens = []
@@ -321,6 +321,9 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.emojiCatalogs = (language ?? .english).parts.map { emojiCatalogs[$0] }
     }
 
+    /// Whether to share where your taps land with the app: with Full Access, unless Your Taps is off (espanso-keyboard).
+    private var sharesTaps: Bool { hasFullAccess && engine.settings.sharesTaps }
+
     /// Gives the corrector the word list, next words and learned words of the language in the settings, keeping where
     /// your taps land; emoji come from the index of the language you write in (espanso-keyboard).
     private func useLanguage() {
@@ -328,7 +331,7 @@ open class HexKeyboardViewController: UIInputViewController {
         guard picked != language else { return }
         if language != nil { engine.endSession() }
         let old = engine.corrector
-        if let old, let language { MemoryStore.save(old.memory, language: language, sharing: hasFullAccess) }
+        if let old, let language { MemoryStore.save(old.memory, language: language, sharing: sharesTaps) }
         language = picked
         let corrector = Corrector.for(picked)
         corrector.memory = MemoryStore.load(picked)

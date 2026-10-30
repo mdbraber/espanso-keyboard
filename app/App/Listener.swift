@@ -130,7 +130,7 @@ import UIKit
         reset()
         set(.idle)
         keepMicOn()
-        guard wasListening, let analyzer, let heard else {
+        guard wasListening, Transcripts.isKept, let analyzer, let heard else {
             await analyzer?.cancelAndFinishNow()
             heard?.cancel()
             return

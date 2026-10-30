@@ -14,11 +14,18 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         LaunchOptions.applyOneHanded()
         EspansoImport.copyIfAsked()
         let home = HomeViewController()
-        let tabs = UITabBarController(tabs: [
+        let all = [
             UITab(title: "Hex", image: UIImage(systemName: "keyboard"), identifier: "home") { _ in Self.navigation(home) },
             UITab(title: "Transcripts", image: UIImage(systemName: "waveform"), identifier: "transcripts") { _ in TranscriptsView.controller() },
             UITab(title: "Your Taps", image: UIImage(systemName: "hand.tap"), identifier: "taps") { _ in Self.navigation(TapsViewController()) },
-        ])
+        ]
+        let tabs = UITabBarController(tabs: Self.shown(all))
+        NotificationCenter.default.addObserver(forName: .hexTabsChanged, object: nil, queue: .main) { [weak tabs] _ in
+            MainActor.assumeIsolated {
+                guard let tabs, tabs.tabs.map(\.identifier) != Self.shown(all).map(\.identifier) else { return }
+                tabs.setTabs(Self.shown(all), animated: false)
+            }
+        }
         tabs.selectedTab = tabs.tab(forIdentifier: LaunchOptions.tab)
         window.rootViewController = tabs
         if LaunchOptions.settings { home.showSettings() }
@@ -30,6 +37,21 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// Each time Hex comes to the front, the keyboard gets a fresh copy of the Espanso folder (espanso-keyboard).
     func sceneDidBecomeActive(_ scene: UIScene) {
         EspansoImport.reloadInBackground()
+        // Privacy may have changed in the Settings app.
+        if !SettingsStore.load().sharesTaps { MemoryStore.removeSharedTouches() }
+        NotificationCenter.default.post(name: .hexTabsChanged, object: nil)
+    }
+
+    /// The tabs to show: Transcripts and Your Taps go when Keyboard Settings › Privacy switches them off
+    /// (espanso-keyboard).
+    private static func shown(_ all: [UITab]) -> [UITab] {
+        all.filter { tab in
+            switch tab.identifier {
+            case "transcripts": Transcripts.isKept
+            case "taps": SettingsStore.load().sharesTaps
+            default: true
+            }
+        }
     }
 
     private static func navigation(_ root: UIViewController) -> UINavigationController {
@@ -75,4 +97,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         alert.addAction(UIAlertAction(title: "Add", style: .default) { _ in SourceStore.add(source) })
         window?.rootViewController?.present(alert, animated: true)
     }
+}
+
+extension Notification.Name {
+    /// Keep Transcripts or Show Your Taps changed (espanso-keyboard).
+    static let hexTabsChanged = Notification.Name("HexTabsChanged")
 }

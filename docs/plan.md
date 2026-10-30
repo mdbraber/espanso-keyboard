@@ -530,6 +530,15 @@ The engine has one index per language of the mixture (`TypingEngine.emojiCatalog
 and uses the leading language's, so in EN+NL "die" after Dutch finds nothing and after
 English finds 💀. Tests: `DutchEmojiTests` (2), `BilingualTests.emojiComeFrom…`.
 
+**Privacy switches (2026-10-30)**, asked for by the owner: Keyboard Settings › Privacy
+(and the Settings app) has Keep Transcripts and Show Your Taps, both on by default. Keep
+Transcripts off stops saving dictations (a cancelled one isn't transcribed at all) and
+hides the Transcripts tab; switching it off offers to delete the ones kept. Show Your
+Taps off stops the keyboard sharing its touch model with the app, deletes the shared
+copy and hides Your Taps; the keyboard still learns from your taps for autocorrect.
+`UITab.isHidden` didn't hide a tab on iPhone, so the tab bar is given only the visible
+tabs. Test: `PrivacyTests`.
+
 ## Updating Espanso
 
 The three Espanso libraries are pinned to one commit in `core/Cargo.toml`. To update:

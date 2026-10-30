@@ -1,4 +1,5 @@
 import Foundation
+import KeyboardUI
 import Observation
 
 struct Transcript: Codable, Identifiable, Hashable {
@@ -26,8 +27,17 @@ struct Transcript: Codable, Identifiable, Hashable {
         all = data.split(separator: UInt8(ascii: "\n")).compactMap { try? decoder.decode(Transcript.self, from: $0) }.reversed()
     }
 
+    /// Whether dictations are kept here; Keyboard Settings › Keep Transcripts (espanso-keyboard).
+    /// In the App Group, where the Settings app writes it too.
+    static var isKept: Bool {
+        get { defaults.object(forKey: "keepTranscripts") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "keepTranscripts") }
+    }
+
+    private static var defaults: UserDefaults { UserDefaults(suiteName: SettingsStore.appGroup) ?? .standard }
+
     func add(_ text: String, at date: Date, seconds: Double, typed: Bool) {
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty, Self.isKept else { return }
         let transcript = Transcript(date: date, text: text, seconds: seconds, typed: typed)
         all.insert(transcript, at: 0)
         guard let line = try? JSONEncoder().encode(transcript) else { return }

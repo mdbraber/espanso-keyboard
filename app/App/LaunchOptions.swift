@@ -35,6 +35,7 @@ enum LaunchOptions {
         guard defaults.bool(forKey: "HexResetSettings") else { return }
         SettingsStore.reset()
         MemoryStore.reset()
+        Transcripts.isKept = true
     }
 
     static func applyOneHanded() {

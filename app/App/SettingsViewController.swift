@@ -8,6 +8,7 @@ final class SettingsViewController: UITableViewController {
         case oneHanded
         case language
         case keepMicOn
+        case transcripts
         case espanso
         case source(Source)
         case addSource
@@ -39,6 +40,7 @@ final class SettingsViewController: UITableViewController {
             .toggle("Predictive Text", \.predictiveText),
         ]),
         Section(title: "Voice", footer: Self.keepMicOnFooter, rows: [.keepMicOn]),
+        Section(title: "Privacy", footer: Self.privacyFooter, rows: [.transcripts, .toggle("Show Your Taps", \.sharesTaps)]),
         Section(title: "Espanso", footer: EspansoViewController.summary, rows: [.espanso]),
         Section(title: "Sources", footer: Self.sourcesFooter, rows: sources.map(Row.source) + [.addSource]),
         Section(footer: "Removes the words and typing habits Hex has learned from you.", rows: [.reset]),
@@ -49,6 +51,8 @@ final class SettingsViewController: UITableViewController {
     private static let sourcesFooter = "With Allow Full Access on, Hex sends each source the text of the field you’re typing in, except passwords and codes, and shows the hints it answers with above the keys. Tap a hint to hide it."
 
     private static let languageFooter = "Hold 123 to switch between English, Nederlands and both while you type; with both, Hex leans toward the language you’re writing. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement."
+
+    private static let privacyFooter = "Keep Transcripts saves what you dictate in Hex, on this iPhone only, for the Transcripts tab. Show Your Taps lets the keyboard share where your taps land with the Your Taps tab; autocorrect learns from your taps either way."
 
     private static let oneHandedFooter = "Hold 123 and slide to move the keys toward one thumb."
 
@@ -146,6 +150,10 @@ final class SettingsViewController: UITableViewController {
             toggle.addAction(UIAction { [unowned self, unowned toggle] _ in
                 settings[keyPath: path] = toggle.isOn
                 SettingsStore.set(toggle.isOn, for: path)
+                if path == \.sharesTaps {
+                    if !toggle.isOn { MemoryStore.removeSharedTouches() }
+                    NotificationCenter.default.post(name: .hexTabsChanged, object: nil)
+                }
             }, for: .valueChanged)
             cell.accessoryView = toggle
         case .oneHanded:
@@ -158,6 +166,13 @@ final class SettingsViewController: UITableViewController {
             content.secondaryText = settings.language.name
             cell.accessoryView = nil
             cell.accessoryType = .disclosureIndicator
+        case .transcripts:
+            content.text = "Keep Transcripts"
+            let toggle = UISwitch()
+            toggle.isOn = Transcripts.isKept
+            toggle.accessibilityIdentifier = "Keep Transcripts"
+            toggle.addAction(UIAction { [unowned self, unowned toggle] _ in keepTranscripts(toggle.isOn, from: toggle) }, for: .valueChanged)
+            cell.accessoryView = toggle
         case .keepMicOn:
             content.text = "Keep Mic On"
             content.secondaryText = Dictation.title(keepingMicOn: SettingsStore.keepMicOn)
@@ -185,6 +200,21 @@ final class SettingsViewController: UITableViewController {
         }
         cell.contentConfiguration = content
         return cell
+    }
+
+    /// Switching Keep Transcripts off offers to delete the ones kept so far (espanso-keyboard).
+    private func keepTranscripts(_ kept: Bool, from toggle: UIView) {
+        Transcripts.isKept = kept
+        NotificationCenter.default.post(name: .hexTabsChanged, object: nil)
+        let count = Transcripts.shared.all.count
+        guard !kept, count > 0 else { return }
+        let alert = UIAlertController(title: nil, message: "Hex has \(count) transcript\(count == 1 ? "" : "s") from earlier dictation.", preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "Delete Transcripts", style: .destructive) { _ in
+            Transcripts.shared.delete(Set(Transcripts.shared.all.map(\.id)))
+        })
+        alert.addAction(UIAlertAction(title: "Keep Them", style: .cancel))
+        alert.popoverPresentationController?.sourceView = toggle
+        present(alert, animated: true)
     }
 
     private func addSource() {
