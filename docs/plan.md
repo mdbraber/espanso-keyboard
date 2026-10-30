@@ -485,10 +485,13 @@ noise; the English evaluation is unchanged; all existing tests pass.
 - Xcode doesn't always recopy a package's resource bundle into the app, the extension
   or a test bundle when a resource is added; after adding one, delete the nested
   `HexKeyboard_*.bundle` copies under `build/*/Build/Products` (the keyboard crashed on
-  the missing `nl.lexicon` until then).
+  the missing `nl.lexicon` until then). The iPhone build hit it too: check that
+  `Hex.app/PlugIns/Keyboard.appex/HexKeyboard_KeyboardUI.bundle` holds `nl.lexicon`.
+- Installed on the owner's iPhone from gloob (2026-10-30), signed Release build.
 
 Open:
-- Not tried on the iPhone yet: memory with nl.lexicon loaded, and how it feels.
+- Installed but not yet typed with on the iPhone: memory with nl.lexicon loaded, and how
+  it feels.
 - No automatic language detection; switching is by hand.
 - Dutch capitalization of "ij" at a sentence start ("IJs") isn't done.
 
