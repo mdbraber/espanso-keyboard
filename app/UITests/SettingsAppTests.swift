@@ -37,7 +37,7 @@ final class SettingsAppTests: XCTestCase {
 
     func testKeepMicOnIsPickedInHexAndShownInSettings() throws {
         let hex = XCUIApplication()
-        hex.launchArguments = ["-HexResetSettings", "YES", "-HexSettings", "YES"]
+        hex.launchArguments = ["-HexResetSettings", "YES", "-HexSettings", "YES", "-HexPage", "voice"]
         hex.launch()
         let row = hex.cells.containing(.staticText, identifier: "Keep Mic On").firstMatch
         while !row.isHittable { hex.swipeUp() }

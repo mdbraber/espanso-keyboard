@@ -28,7 +28,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         tabs.selectedTab = tabs.tab(forIdentifier: LaunchOptions.tab)
         window.rootViewController = tabs
-        if LaunchOptions.settings { home.showSettings() }
+        if LaunchOptions.settings { home.showSettings(LaunchOptions.settingsPage) }
         window.makeKeyAndVisible()
         self.window = window
         open(options.urlContexts)
@@ -38,7 +38,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidBecomeActive(_ scene: UIScene) {
         EspansoImport.reloadInBackground()
         // Privacy may have changed in the Settings app.
-        if !SettingsStore.load().sharesTaps { MemoryStore.removeSharedTouches() }
+        let settings = SettingsStore.load()
+        if !settings.learnsTaps || !settings.sharesTaps { MemoryStore.removeSharedTouches() }
         NotificationCenter.default.post(name: .hexTabsChanged, object: nil)
     }
 
@@ -47,8 +48,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private static func shown(_ all: [UITab]) -> [UITab] {
         all.filter { tab in
             switch tab.identifier {
-            case "transcripts": Transcripts.isKept
-            case "taps": SettingsStore.load().sharesTaps
+            case "transcripts": SettingsStore.load().voice && Transcripts.isKept
+            case "taps": SettingsStore.load().learnsTaps && SettingsStore.load().sharesTaps
             default: true
             }
         }
@@ -100,6 +101,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 
 extension Notification.Name {
-    /// Keep Transcripts or Show Your Taps changed (espanso-keyboard).
+    /// Voice Typing, Transcripts, Learn My Taps or Show Your Taps changed (espanso-keyboard).
     static let hexTabsChanged = Notification.Name("HexTabsChanged")
 }

@@ -3,13 +3,27 @@ import KeyboardUI
 import UIKit
 
 final class SettingsViewController: UITableViewController {
+    /// The main screen's items with settings of their own (espanso-keyboard). Each feature page starts with a switch that
+    /// turns the feature off completely; its options show while it's on.
+    enum Page {
+        case keyboard, voice, sources, taps
+
+        var title: String {
+            switch self {
+            case .keyboard: "Keyboard"
+            case .voice: "Voice"
+            case .sources: "Sources"
+            case .taps: "Your Taps"
+            }
+        }
+    }
+
     private enum Row {
         case toggle(String, WritableKeyPath<KeyboardSettings, Bool>)
         case oneHanded
         case language
         case keepMicOn
         case transcripts
-        case espanso
         case source(Source)
         case addSource
         case reset
@@ -21,7 +35,25 @@ final class SettingsViewController: UITableViewController {
         var rows: [Row]
     }
 
-    private var sections: [Section] { [
+    private var sections: [Section] {
+        switch page {
+        case .keyboard: keyboardSections
+        case .voice:
+            [Section(footer: "Off, the keyboard has no mic and Hex never uses the microphone.", rows: [.toggle("Voice Typing", \.voice)])]
+                + (settings.voice ? [
+                    Section(footer: Self.keepMicOnFooter, rows: [.keepMicOn]),
+                    Section(footer: "Saves what you dictate, on this iPhone only, for the Transcripts tab.", rows: [.transcripts]),
+                ] : [])
+        case .sources:
+            [Section(footer: "Off, Hex sends nothing to any source and shows no hints.", rows: [.toggle("Sources", \.sources)])]
+                + (settings.sources ? [Section(footer: Self.sourcesFooter, rows: sources.map(Row.source) + [.addSource])] : [])
+        case .taps:
+            [Section(footer: "Hex learns where your thumbs land on each key, so autocorrect fits how you type. Off, it stops and forgets what it learned, and uses its standard idea of the keys.", rows: [.toggle("Learn My Taps", \.learnsTaps)])]
+                + (settings.learnsTaps ? [Section(footer: "Lets the keyboard share what it learned with the Your Taps tab, with Allow Full Access on.", rows: [.toggle("Show Your Taps", \.sharesTaps)])] : [])
+        }
+    }
+
+    private var keyboardSections: [Section] { [
         Section(footer: Self.oneHandedFooter, rows: [.oneHanded]),
         Section(footer: "Haptic Feedback needs Allow Full Access in Settings › General › Keyboard › Keyboards › Hex.", rows: [
             .toggle("Character Preview", \.characterPreview),
@@ -39,10 +71,6 @@ final class SettingsViewController: UITableViewController {
             .language,
             .toggle("Predictive Text", \.predictiveText),
         ]),
-        Section(title: "Voice", footer: Self.keepMicOnFooter, rows: [.keepMicOn]),
-        Section(title: "Privacy", footer: Self.privacyFooter, rows: [.transcripts, .toggle("Show Your Taps", \.sharesTaps)]),
-        Section(title: "Espanso", footer: EspansoViewController.summary, rows: [.espanso]),
-        Section(title: "Sources", footer: Self.sourcesFooter, rows: sources.map(Row.source) + [.addSource]),
         Section(footer: "Removes the words and typing habits Hex has learned from you.", rows: [.reset]),
     ] }
 
@@ -52,16 +80,16 @@ final class SettingsViewController: UITableViewController {
 
     private static let languageFooter = "Hold 123 to switch between English, Nederlands and both while you type; with both, Hex leans toward the language you’re writing. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement."
 
-    private static let privacyFooter = "Keep Transcripts saves what you dictate in Hex, on this iPhone only, for the Transcripts tab. Show Your Taps lets the keyboard share where your taps land with the Your Taps tab; autocorrect learns from your taps either way."
-
     private static let oneHandedFooter = "Hold 123 and slide to move the keys toward one thumb."
 
+    private let page: Page
     private var settings = SettingsStore.load()
     private var sources = SourceStore.load()
 
-    init() {
+    init(page: Page = .keyboard) {
+        self.page = page
         super.init(style: .insetGrouped)
-        title = "Keyboard"
+        title = page.title
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -121,8 +149,6 @@ final class SettingsViewController: UITableViewController {
                 SettingsStore.keepMicOn = $0
                 Listener.shared.keepMicOn()
             }, sender: self)
-        case .espanso:
-            return show(EspansoViewController(), sender: self)
         case .addSource:
             tableView.deselectRow(at: indexPath, animated: true)
             return addSource()
@@ -150,10 +176,11 @@ final class SettingsViewController: UITableViewController {
             toggle.addAction(UIAction { [unowned self, unowned toggle] _ in
                 settings[keyPath: path] = toggle.isOn
                 SettingsStore.set(toggle.isOn, for: path)
-                if path == \.sharesTaps {
-                    if !toggle.isOn { MemoryStore.removeSharedTouches() }
+                if !toggle.isOn, path == \.sharesTaps || path == \.learnsTaps { MemoryStore.removeSharedTouches() }
+                if [\KeyboardSettings.voice, \.learnsTaps, \.sharesTaps].contains(path) {
                     NotificationCenter.default.post(name: .hexTabsChanged, object: nil)
                 }
+                if [\KeyboardSettings.voice, \.learnsTaps, \.sources].contains(path) { tableView.reloadData() }
             }, for: .valueChanged)
             cell.accessoryView = toggle
         case .oneHanded:
@@ -167,10 +194,10 @@ final class SettingsViewController: UITableViewController {
             cell.accessoryView = nil
             cell.accessoryType = .disclosureIndicator
         case .transcripts:
-            content.text = "Keep Transcripts"
+            content.text = "Transcripts"
             let toggle = UISwitch()
             toggle.isOn = Transcripts.isKept
-            toggle.accessibilityIdentifier = "Keep Transcripts"
+            toggle.accessibilityIdentifier = "Transcripts"
             toggle.addAction(UIAction { [unowned self, unowned toggle] _ in keepTranscripts(toggle.isOn, from: toggle) }, for: .valueChanged)
             cell.accessoryView = toggle
         case .keepMicOn:
@@ -184,11 +211,6 @@ final class SettingsViewController: UITableViewController {
             content.secondaryText = source.url.absoluteString
             content.secondaryTextProperties.color = .secondaryLabel
             cell.accessoryView = nil
-        case .espanso:
-            content.text = "Espanso Snippets"
-            content.secondaryText = EspansoImport.lastSummary?.folderName ?? "Choose Folder…"
-            cell.accessoryView = nil
-            cell.accessoryType = .disclosureIndicator
         case .addSource:
             content.text = "Add Source…"
             content.textProperties.color = .tintColor
@@ -202,7 +224,7 @@ final class SettingsViewController: UITableViewController {
         return cell
     }
 
-    /// Switching Keep Transcripts off offers to delete the ones kept so far (espanso-keyboard).
+    /// Switching Transcripts off offers to delete the ones kept so far (espanso-keyboard).
     private func keepTranscripts(_ kept: Bool, from toggle: UIView) {
         Transcripts.isKept = kept
         NotificationCenter.default.post(name: .hexTabsChanged, object: nil)

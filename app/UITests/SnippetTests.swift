@@ -45,10 +45,9 @@ final class SnippetTests: EspansoTestCase {
     }
 
     func testTheEspansoScreenShowsTheCopy() throws {
-        app.cells.staticTexts["Keyboard Settings"].firstMatch.tap()
         let espanso = app.cells.staticTexts["Espanso Snippets"].firstMatch
-        XCTAssertTrue(espanso.waitForExistence(timeout: 5), "Keyboard Settings has an Espanso section")
-        let sources = app.staticTexts["SOURCES"].firstMatch
+        XCTAssertTrue(espanso.waitForExistence(timeout: 5), "Hex's main screen has Espanso Snippets")
+        let sources = app.cells.staticTexts["Sources"].firstMatch
         if sources.exists { XCTAssertLessThan(espanso.frame.minY, sources.frame.minY, "Espanso comes before Sources") }
         espanso.tap()
         let footer = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'snippets, copied'")).firstMatch

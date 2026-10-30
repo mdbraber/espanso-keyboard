@@ -1,8 +1,11 @@
+import KeyboardUI
 import UIKit
 
 final class HomeViewController: UITableViewController {
-    private enum Row {
+    private enum Row: Equatable {
         case status, field, settings, fullAccess
+        /// Features with a page of their own (espanso-keyboard).
+        case voice, espanso, sources, taps
     }
 
     private struct Section {
@@ -14,7 +17,8 @@ final class HomeViewController: UITableViewController {
     private let sections = [
         Section(footer: "Hex only goes online to reach the sources you add in Keyboard Settings. Without one, what you type and say stays on this iPhone.", rows: [.status]),
         Section(title: "Try It", rows: [.field]),
-        Section(footer: "Full Access lets Hex play haptics, type what you say, and show you where your taps land.", rows: [.settings, .fullAccess]),
+        Section(rows: [.settings, .voice, .espanso, .sources, .taps]),
+        Section(footer: "Full Access lets Hex play haptics, type what you say, and show you where your taps land.", rows: [.fullAccess]),
     ]
 
     private let field = UITextView()
@@ -76,8 +80,13 @@ final class HomeViewController: UITableViewController {
         tableView.reconfigureRows(at: [IndexPath(row: 0, section: 0)])
     }
 
-    func showSettings() {
-        navigationController?.pushViewController(SettingsViewController(), animated: false)
+    func showSettings(_ page: SettingsViewController.Page = .keyboard) {
+        navigationController?.pushViewController(SettingsViewController(page: page), animated: false)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        tableView.reloadData()
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
@@ -97,6 +106,10 @@ final class HomeViewController: UITableViewController {
         switch row(at: indexPath) {
         case .status, .fullAccess: UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
         case .settings: navigationController?.pushViewController(SettingsViewController(), animated: true)
+        case .voice: navigationController?.pushViewController(SettingsViewController(page: .voice), animated: true)
+        case .sources: navigationController?.pushViewController(SettingsViewController(page: .sources), animated: true)
+        case .taps: navigationController?.pushViewController(SettingsViewController(page: .taps), animated: true)
+        case .espanso: navigationController?.pushViewController(EspansoViewController(), animated: true)
         case .field: break
         }
     }
@@ -109,16 +122,35 @@ final class HomeViewController: UITableViewController {
             let cell = tableView.dequeueReusableCell(withIdentifier: "status", for: indexPath) as! StatusCell
             cell.show(isAdded: isAdded)
             return cell
-        case .settings, .fullAccess:
+        default:
             break
         }
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        var content = UIListContentConfiguration.cell()
+        var content = UIListContentConfiguration.valueCell()
         cell.accessoryType = .disclosureIndicator
-        if row(at: indexPath) == .settings {
+        let settings = SettingsStore.load()
+        func state(_ on: Bool) -> String { on ? "On" : "Off" }
+        switch row(at: indexPath) {
+        case .settings:
             content.image = UIImage(systemName: "gearshape")
             content.text = "Keyboard Settings"
-        } else {
+        case .voice:
+            content.image = UIImage(systemName: "mic")
+            content.text = "Voice"
+            content.secondaryText = state(settings.voice)
+        case .espanso:
+            content.image = UIImage(systemName: "text.badge.plus")
+            content.text = "Espanso Snippets"
+            content.secondaryText = state(EspansoShared.isOn)
+        case .sources:
+            content.image = UIImage(systemName: "network")
+            content.text = "Sources"
+            content.secondaryText = state(settings.sources)
+        case .taps:
+            content.image = UIImage(systemName: "hand.tap")
+            content.text = "Your Taps"
+            content.secondaryText = state(settings.learnsTaps)
+        default:
             content.image = UIImage(systemName: "lock.open")
             content.text = "Allow Full Access"
         }

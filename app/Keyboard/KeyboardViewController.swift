@@ -22,7 +22,7 @@ final class KeyboardViewController: HexKeyboardViewController {
 
     /// Loads the app's current copy of the Espanso folder when it isn't the one loaded (espanso-keyboard, plan step 5).
     private func loadSnippets() {
-        let current = EspansoLibrary.current
+        let current = EspansoShared.isOn ? EspansoLibrary.current : nil
         guard current != loaded || (current != nil && expander == nil) else { return }
         loaded = current
         let expander = current.flatMap(EspansoExpander.init(folder:))

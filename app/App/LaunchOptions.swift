@@ -11,6 +11,15 @@ enum LaunchOptions {
 
     static var focus: Bool { defaults.bool(forKey: "HexFocus") }
     static var settings: Bool { defaults.bool(forKey: "HexSettings") }
+    /// The settings page `-HexSettings YES` opens: `-HexPage voice`, `sources` or `taps` (espanso-keyboard).
+    static var settingsPage: SettingsViewController.Page {
+        switch defaults.string(forKey: "HexPage") {
+        case "voice": .voice
+        case "sources": .sources
+        case "taps": .taps
+        default: .keyboard
+        }
+    }
     /// The tab the app opens on: `-HexTab transcripts`, or `-HexTaps YES` for Your Taps.
     static var tab: String { defaults.bool(forKey: "HexTaps") ? "taps" : defaults.string(forKey: "HexTab") ?? "home" }
     static var tapsMode: TapMapView.Mode? {

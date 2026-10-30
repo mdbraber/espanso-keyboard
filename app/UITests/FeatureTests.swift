@@ -76,9 +76,8 @@ final class FeatureTests: EspansoTestCase {
 
     // MARK: App
 
-    /// Opens Keyboard Settings › Espanso Snippets.
+    /// Opens Espanso Snippets from Hex's main screen.
     private func openEspanso() {
-        app.cells.staticTexts["Keyboard Settings"].firstMatch.tap()
         let espanso = app.cells.staticTexts["Espanso Snippets"].firstMatch
         XCTAssertTrue(espanso.waitForExistence(timeout: 5))
         espanso.tap()

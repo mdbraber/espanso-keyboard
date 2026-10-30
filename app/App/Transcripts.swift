@@ -27,7 +27,7 @@ struct Transcript: Codable, Identifiable, Hashable {
         all = data.split(separator: UInt8(ascii: "\n")).compactMap { try? decoder.decode(Transcript.self, from: $0) }.reversed()
     }
 
-    /// Whether dictations are kept here; Keyboard Settings › Keep Transcripts (espanso-keyboard).
+    /// Whether dictations are kept here; Voice › Transcripts (espanso-keyboard).
     /// In the App Group, where the Settings app writes it too.
     static var isKept: Bool {
         get { defaults.object(forKey: "keepTranscripts") as? Bool ?? true }

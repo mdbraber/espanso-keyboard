@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// match file, and Espanso's warnings (espanso-keyboard, plan steps 5 and 6).
 final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate, UISearchResultsUpdating {
     private enum Row: Hashable {
-        case enabled, button, folder, reload, warning(String), snippet(Int32), file(String)
+        case on, enabled, button, folder, reload, warning(String), snippet(Int32), file(String)
     }
 
     private struct Section {
@@ -74,7 +74,10 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
     }
 
     private var sections: [Section] {
+        let master = Section(footer: "Off, the keyboard loads no snippets: nothing expands, none are suggested and the snippets button goes.", rows: [.on])
+        guard EspansoShared.isOn else { return [master] }
         var sections = [
+            master,
             Section(footer: "When Expand Snippets is off, Hex types your triggers as they are; the snippets button above the keys still works. Snippets Button shows or hides that button.", rows: [.enabled, .button]),
             Section(footer: folderFooter, rows: [.folder, .reload]),
         ]
@@ -120,6 +123,17 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
         cell.accessoryView = nil
         cell.selectionStyle = .default
         switch sections[indexPath.section].rows[indexPath.row] {
+        case .on:
+            content.text = "Espanso Snippets"
+            let toggle = UISwitch()
+            toggle.isOn = EspansoShared.isOn
+            toggle.accessibilityIdentifier = "Espanso Snippets"
+            toggle.addAction(UIAction { [unowned self, unowned toggle] _ in
+                EspansoShared.isOn = toggle.isOn
+                tableView.reloadData()
+            }, for: .valueChanged)
+            cell.accessoryView = toggle
+            cell.selectionStyle = .none
         case .enabled:
             content.text = "Expand Snippets"
             let toggle = UISwitch()
@@ -183,7 +197,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             guard let engine else { return }
             let inFile = snippets.values.filter { $0.file == file }.sorted { $0.triggers[0] < $1.triggers[0] }
             navigationController?.pushViewController(SnippetListViewController(file: file, snippets: inFile, engine: engine), animated: true)
-        case .enabled, .button, .warning:
+        case .on, .enabled, .button, .warning:
             break
         }
     }

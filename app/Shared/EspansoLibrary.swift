@@ -24,6 +24,13 @@ nonisolated enum EspansoLibrary {
 nonisolated enum EspansoShared {
     private static var defaults: UserDefaults? { UserDefaults(suiteName: SettingsStore.appGroup) }
 
+    /// Whether the keyboard uses snippets at all: off, it loads none, so nothing expands, no snippet is suggested and
+    /// the snippets button goes (espanso-keyboard).
+    static var isOn: Bool {
+        get { defaults?.object(forKey: "EspansoOn") as? Bool ?? true }
+        set { defaults?.set(newValue, forKey: "EspansoOn") }
+    }
+
     /// Whether typing expands snippets; the snippet panel works either way.
     static var isEnabled: Bool {
         get { defaults?.object(forKey: "EspansoEnabled") as? Bool ?? true }

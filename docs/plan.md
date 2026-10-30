@@ -530,14 +530,25 @@ The engine has one index per language of the mixture (`TypingEngine.emojiCatalog
 and uses the leading language's, so in EN+NL "die" after Dutch finds nothing and after
 English finds 💀. Tests: `DutchEmojiTests` (2), `BilingualTests.emojiComeFrom…`.
 
-**Privacy switches (2026-10-30)**, asked for by the owner: Keyboard Settings › Privacy
-(and the Settings app) has Keep Transcripts and Show Your Taps, both on by default. Keep
-Transcripts off stops saving dictations (a cancelled one isn't transcribed at all) and
-hides the Transcripts tab; switching it off offers to delete the ones kept. Show Your
-Taps off stops the keyboard sharing its touch model with the app, deletes the shared
-copy and hides Your Taps; the keyboard still learns from your taps for autocorrect.
+**Features on/off (2026-10-30)**, asked for by the owner: "when switched off everything
+stops; when on you can set options". Hex's main screen lists Keyboard Settings, Voice,
+Espanso Snippets, Sources and Your Taps; each feature page starts with a master switch
+and shows its options only while it's on (the Settings app mirrors them):
+
+- Voice Typing off: the keyboard has no mic (`SuggestionBar.showsMic`), Hex never uses
+  the microphone, and the Transcripts tab goes. On: Keep Mic On, and Transcripts (off
+  stops saving dictations, offers to delete the kept ones, hides the tab).
+- Espanso Snippets off: the keyboard loads no snippets, so nothing expands, is suggested
+  or shown. On: Expand Snippets, Snippets Button.
+- Sources off: nothing is sent to any source and no hints show. On: the sources.
+- Learn My Taps off: the engine stops learning taps and the keyboard resets its touch
+  model to the default, so autocorrect no longer adapts to your thumbs; nothing is
+  shared and Your Taps goes. On: Show Your Taps (sharing with the app, and the tab).
+
 `UITab.isHidden` didn't hide a tab on iPhone, so the tab bar is given only the visible
-tabs. Test: `PrivacyTests`.
+tabs. Tests: `FeatureSwitchTests` (UI, 2, including the keyboard losing its mic),
+`LearnTapsTests`. Running the UI tests while the package tests run can time out
+`FeatureTests.testAChoiceAsksInAPanel`; alone they all pass.
 
 ## Updating Espanso
 

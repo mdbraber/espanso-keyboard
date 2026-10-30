@@ -170,39 +170,21 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Keep Transcripts saves what you dictate in Hex, on this iPhone only, for the Transcripts tab. Show Your Taps lets the keyboard share where your taps land with the Your Taps tab; autocorrect learns from your taps either way.</string>
-			<key>Title</key>
-			<string>Privacy</string>
-			<key>Type</key>
-			<string>PSGroupSpecifier</string>
-		</dict>
-		<dict>
-			<key>DefaultValue</key>
-			<true/>
-			<key>Key</key>
-			<string>keepTranscripts</string>
-			<key>Title</key>
-			<string>Keep Transcripts</string>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-		</dict>
-		<dict>
-			<key>DefaultValue</key>
-			<true/>
-			<key>Key</key>
-			<string>sharesTaps</string>
-			<key>Title</key>
-			<string>Show Your Taps</string>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-		</dict>
-		<dict>
-			<key>FooterText</key>
-			<string>After you dictate, Hex keeps the mic on this long. While it’s on, the mic beside the suggestions starts and stops dictating without leaving your app; hold it to turn the mic off. Nothing is recorded until you tap it.</string>
+			<string>Voice Typing off: the keyboard has no mic and Hex never uses the microphone. Transcripts saves what you dictate, on this iPhone only. After you dictate, Hex keeps the mic on this long. While it’s on, the mic beside the suggestions starts and stops dictating without leaving your app; hold it to turn the mic off. Nothing is recorded until you tap it.</string>
 			<key>Title</key>
 			<string>Voice</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>voice</string>
+			<key>Title</key>
+			<string>Voice Typing</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>
@@ -233,6 +215,62 @@
 				<integer>3600</integer>
 				<integer>9223372036854775807</integer>
 			</array>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>keepTranscripts</string>
+			<key>Title</key>
+			<string>Transcripts</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Off, Hex sends nothing to any source and shows no hints. Add sources in Hex.</string>
+			<key>Title</key>
+			<string>Sources</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>sourcesOn</string>
+			<key>Title</key>
+			<string>Sources</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Learn My Taps off: Hex stops learning where your thumbs land and forgets what it learned. Show Your Taps shares what it learned with the Your Taps tab.</string>
+			<key>Title</key>
+			<string>Your Taps</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>learnsTaps</string>
+			<key>Title</key>
+			<string>Learn My Taps</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<true/>
+			<key>Key</key>
+			<string>sharesTaps</string>
+			<key>Title</key>
+			<string>Show Your Taps</string>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
 		</dict>
 	</array>
 </dict>

@@ -17,6 +17,10 @@ final class SuggestionBar: UIView {
     var showsSnippets = false {
         didSet { if showsSnippets != oldValue { snippets.isHidden = !showsSnippets; setNeedsLayout() } }
     }
+    /// The mic, unless Voice Typing is off (espanso-keyboard).
+    var showsMic = true {
+        didSet { if showsMic != oldValue { mic.isHidden = !showsMic; setNeedsLayout(); refreshDividers() } }
+    }
     var maximumSlotWidth = CGFloat.infinity { didSet { setNeedsLayout() } }
     /// Where the keys end, so the mic's pill lines up with the last key.
     var keyInset: CGFloat = 0 { didSet { if keyInset != oldValue { setNeedsLayout() } } }
@@ -116,7 +120,7 @@ final class SuggestionBar: UIView {
     /// A divider shows only between two things shown without a pill.
     private func refreshDividers() {
         func hidesDivider(_ index: Int, leading: Bool) -> Bool {
-            if index == slots.count { return mic.showsPill }
+            if index == slots.count { return !showsMic || mic.showsPill }
             if index == slots.count - 1, let pick = leading ? emoji.first : emoji.last { return pick.isHidden || pick.isHighlighted }
             return slots[index].isHidden || slots[index].showsPill
         }
@@ -134,7 +138,7 @@ final class SuggestionBar: UIView {
         let scale = traitCollection.displayScale
         let content = bounds.inset(by: UIEdgeInsets(top: topPadding, left: 0, bottom: 0, right: 0))
         let mic = CGRect(x: bounds.width - keyInset + MicButton.pillInset - MicButton.width, y: content.minY, width: MicButton.width, height: content.height)
-        let end = mic.minX
+        let end = showsMic ? mic.minX : bounds.width
         // The snippets button mirrors the mic at the left end; the slots share what's between.
         let begin = showsSnippets ? keyInset - MicButton.pillInset + MicButton.width : 0
         snippets.frame = CGRect(x: begin - MicButton.width, y: content.minY, width: MicButton.width, height: content.height)

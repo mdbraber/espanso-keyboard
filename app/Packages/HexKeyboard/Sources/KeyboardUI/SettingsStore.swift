@@ -21,6 +21,9 @@ public enum SettingsStore {
         ("haptics", \.haptics),
         ("sound", \.sound),
         ("sharesTaps", \.sharesTaps),
+        ("voice", \.voice),
+        ("learnsTaps", \.learnsTaps),
+        ("sourcesOn", \.sources),
     ]
 
     private static let oneHandedKey = "oneHanded"

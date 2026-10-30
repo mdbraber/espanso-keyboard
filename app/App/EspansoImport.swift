@@ -105,6 +105,8 @@ nonisolated enum EspansoImport {
         #if DEBUG
         guard let path = UserDefaults.standard.string(forKey: "EspansoImport") else { return }
         EspansoShared.isEnabled = true
+        EspansoShared.isOn = true
+        EspansoShared.showsButton = true
         EspansoShared.isPaused = false
         EspansoShared.favourites = []
         if let root = EspansoLibrary.root { try? FileManager.default.removeItem(at: root.appending(path: "usage.json")) }

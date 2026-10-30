@@ -114,7 +114,7 @@ open class HexKeyboardViewController: UIInputViewController {
             control.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         }
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in self.render() }
-        if hasFullAccess { sources.reload() }
+        if usesSources { sources.reload() }
         syncWithDocument()
     }
 
@@ -134,6 +134,7 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
         useLanguage()
         engine.corrector?.memory = MemoryStore.load(engine.settings.language)
+        forgetTapsIfOff()
         engine.emojiHistory = MemoryStore.loadEmoji()
         if hasFullAccess, dictationTokens.isEmpty {
             dictationTokens = [
@@ -144,7 +145,7 @@ open class HexKeyboardViewController: UIInputViewController {
         }
         engine.suggestionsChanged()
         keyboardView.characterPreview = engine.settings.characterPreview
-        if hasFullAccess { sources.reload() }
+        if usesSources { sources.reload() }
         expander?.reset()
         syncWithDocument()
     }
@@ -216,7 +217,7 @@ open class HexKeyboardViewController: UIInputViewController {
 
     /// What a source sees: the field's text as the keyboard knows it, with Full Access, outside password and code fields.
     private func tellSources(_ author: FieldUpdate.Author) {
-        guard hasFullAccess, !textDocumentProxy.isPrivate, let field = textDocumentProxy.field else { return }
+        guard usesSources, !textDocumentProxy.isPrivate, let field = textDocumentProxy.field else { return }
         sources.observe(FieldUpdate(
             field: field, before: engine.text.before, after: engine.text.after ?? "", by: author, traits: engine.traits,
             at: Date().timeIntervalSince1970
@@ -224,7 +225,7 @@ open class HexKeyboardViewController: UIInputViewController {
     }
 
     private var hint: String? {
-        guard hasFullAccess, let field = textDocumentProxy.field else { return nil }
+        guard usesSources, let field = textDocumentProxy.field else { return nil }
         return sources.hint(for: field)
     }
 
@@ -239,6 +240,7 @@ open class HexKeyboardViewController: UIInputViewController {
         suggestionBar.maximumSlotWidth = device == .phone ? .infinity : 154.5
         suggestionBar.keyInset = metrics.sideInset
         suggestionBar.topPadding = device == .phone ? 10 : 0
+        suggestionBar.showsMic = engine.settings.voice
         suggestionBar.update(mic: mic, notice: dictation.failure ?? hint, theme: theme)
         suggestionBar.showsSnippets = expander?.hasSnippets ?? false
         renderSuggestions()
@@ -321,8 +323,18 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.emojiCatalogs = (language ?? .english).parts.map { emojiCatalogs[$0] }
     }
 
-    /// Whether to share where your taps land with the app: with Full Access, unless Your Taps is off (espanso-keyboard).
-    private var sharesTaps: Bool { hasFullAccess && engine.settings.sharesTaps }
+    /// Whether to share where your taps land with the app: with Full Access, while learning them, unless Show Your Taps
+    /// is off (espanso-keyboard).
+    private var sharesTaps: Bool { hasFullAccess && engine.settings.learnsTaps && engine.settings.sharesTaps }
+
+    /// Whether to send the field's text to sources: with Full Access, unless Sources is off (espanso-keyboard).
+    private var usesSources: Bool { hasFullAccess && engine.settings.sources }
+
+    /// With Learn My Taps off, the keyboard keeps no record of where you tap (espanso-keyboard).
+    private func forgetTapsIfOff() {
+        guard !engine.settings.learnsTaps, let corrector = engine.corrector, corrector.memory.touches != TouchModel() else { return }
+        corrector.memory.touches = TouchModel()
+    }
 
     /// Gives the corrector the word list, next words and learned words of the language in the settings, keeping where
     /// your taps land; emoji come from the index of the language you write in (espanso-keyboard).
@@ -342,6 +354,7 @@ open class HexKeyboardViewController: UIInputViewController {
         }
         engine.corrector = corrector
         useEmoji()
+        forgetTapsIfOff()
         engine.suggestionsChanged()
         learnReplacements()
     }
@@ -439,6 +452,7 @@ open class HexKeyboardViewController: UIInputViewController {
     /// in an app in front. Apps can't be opened from a keyboard through public API, so this goes through the responder
     /// chain to the host's UIApplication, as voice keyboards do.
     private func toggleVoice() {
+        guard engine.settings.voice else { return }
         guard hasFullAccess else {
             dictation = Dictation.Status(failure: "Voice needs Allow Full Access in Settings › Apps › Hex › Keyboards")
             return render()

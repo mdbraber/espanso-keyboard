@@ -10,8 +10,12 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var sound = true
     public var oneHanded = OneHanded.off
     public var language = Language.english
-    /// Whether the keyboard shares where your taps land with the app's Your Taps (espanso-keyboard). Autocorrect learns
-    /// from them either way.
+    /// Features you can switch off completely (espanso-keyboard): voice typing (the bar's mic), learning where your
+    /// taps land (off forgets it), and sending text to sources.
+    public var voice = true
+    public var learnsTaps = true
+    public var sources = true
+    /// Whether the keyboard shares where your taps land with the app's Your Taps, while it learns them.
     public var sharesTaps = true
 
     public init() {}

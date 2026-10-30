@@ -265,7 +265,7 @@ extension TypingEngine {
     }
 
     mutating func learnPending() {
-        if let pending { corrector?.learn(pending.samples) }
+        if let pending, settings.learnsTaps { corrector?.learn(pending.samples) }
         pending = nil
     }
 
