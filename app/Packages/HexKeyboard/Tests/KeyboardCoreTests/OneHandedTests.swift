@@ -47,11 +47,11 @@ struct OneHandedTests {
     @Test func holdingTheLayerKeyOffersTheHandsOnAnUprightPhoneOnly() {
         let context = LayoutContext(device: .phone, layer: .letters)
         #expect(context.menuKey(in: Layouts.layout(for: context))?.action == .layer(.numbers))
-        #expect(context.menu == [.hand(.left), .hand(.off), .hand(.right), .language(.english), .language(.dutch)])
+        #expect(context.menu == [.hand(.left), .hand(.off), .hand(.right), .language(.english), .language(.dutch), .language(.both)])
         let numbers = LayoutContext(device: .phone, layer: .numbers)
         #expect(numbers.menuKey(in: Layouts.layout(for: numbers))?.action == .layer(.letters))
-        #expect(LayoutContext(device: .pad, layer: .letters).menu == [.language(.english), .language(.dutch)], "only an upright phone narrows for one hand")
-        #expect(LayoutContext(device: .phone, layer: .letters, isLandscape: true).menu == [.language(.english), .language(.dutch)])
+        #expect(LayoutContext(device: .pad, layer: .letters).menu == [.language(.english), .language(.dutch), .language(.both)], "only an upright phone narrows for one hand")
+        #expect(LayoutContext(device: .phone, layer: .letters, isLandscape: true).menu == [.language(.english), .language(.dutch), .language(.both)])
     }
 
     @Test func pickingAHandBringsTheLettersBack() {

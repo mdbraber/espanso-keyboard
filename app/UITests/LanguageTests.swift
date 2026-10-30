@@ -24,7 +24,7 @@ final class LanguageTests: XCTestCase {
         app.keys.matching(identifier: "hex.\(name)").firstMatch
     }
 
-    /// The menu holds ←, keyboard, →, EN and NL, 50 points each from x = 17.
+    /// The menu holds ←, keyboard, →, EN, NL and EN+NL, 50 points each from x = 17.
     private func holdNumbersAndPick(atX x: CGFloat) {
         let numbers = key("numbers")
         let pick = numbers.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x - numbers.frame.minX, dy: -35))
@@ -45,5 +45,14 @@ final class LanguageTests: XCTestCase {
         XCTAssertTrue(key("q").waitForExistence(timeout: 2))
         type("teh ")
         XCTAssertEqual(field.value as? String, "Goede ideeën the ")
+    }
+
+    func testBothLanguagesFromTheMenuFollowWhatYouWrite() {
+        holdNumbersAndPick(atX: 292)
+        XCTAssertTrue(key("q").waitForExistence(timeout: 2))
+        type("ik heb goede ideeen ")
+        XCTAssertEqual(field.value as? String, "Ik heb goede ideeën ")
+        type("and i think teh ")
+        XCTAssertEqual(field.value as? String, "Ik heb goede ideeën and I think the ")
     }
 }

@@ -325,7 +325,7 @@ open class HexKeyboardViewController: UIInputViewController {
         let old = engine.corrector
         if let old, let language { MemoryStore.save(old.memory, language: language, sharing: hasFullAccess) }
         language = picked
-        let corrector = Corrector(source: Lexicon.for(picked), phrases: .for(picked))
+        let corrector = Corrector.for(picked)
         corrector.memory = MemoryStore.load(picked)
         if let old {
             corrector.memory.touches = old.memory.touches

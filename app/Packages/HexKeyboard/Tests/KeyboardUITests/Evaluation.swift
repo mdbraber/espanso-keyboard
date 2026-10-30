@@ -65,6 +65,39 @@ struct Evaluation {
         }
     }
 
+    /// Both languages at once (espanso-keyboard): the English and the Dutch phrases typed with one corrector that knows
+    /// both, to compare with each language alone. The phrases alternate, English then Dutch, as a bilingual user writes.
+    @Test func both() throws {
+        let english = try Self.phrases(), dutch = try Self.phrases("phrases-nl")
+        for keyboard in [Keyboard.decoder, .learning] {
+            for noise in Self.noiseLevels {
+                var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026)
+                var session = Session(keyboard, grid: user.grid, language: .both)
+                var scores = [Score(), Score()]
+                for index in 0..<max(english.count, dutch.count) {
+                    for (language, phrases) in [english, dutch].enumerated() where index < phrases.count {
+                        session.startPhrase()
+                        session.score = scores[language]
+                        for word in phrases[index].split(separator: " ") { session.type(String(word), by: &user, tappingSpace: false) }
+                        scores[language] = session.score
+                    }
+                }
+                print("EVAL both corpus=en noise=\(noise) keyboard=\(keyboard.rawValue) \(scores[0])")
+                print("EVAL both corpus=nl noise=\(noise) keyboard=\(keyboard.rawValue) \(scores[1])")
+            }
+        }
+        for corpus in ["chat", "chat-nl"] {
+            let url = try #require(Bundle.module.url(forResource: corpus, withExtension: "txt"))
+            let phrases = try String(contentsOf: url, encoding: .utf8).split(separator: "\n")
+            var prediction = Prediction(language: .both)
+            for phrase in phrases {
+                prediction.engine.corrector?.memory = TypingMemory()
+                prediction.type(phrase.split(separator: " ").map(String.init))
+            }
+            print("EVAL both predict corpus=\(corpus) user=new \(prediction.summary)")
+        }
+    }
+
     /// Main-thread cost per keystroke of what the extension runs for one key: hit-testing on touch down, the key on
     /// touch up, and the document refresh the host's `textDidChange` triggers.
     @Test func latency() throws {
@@ -194,8 +227,7 @@ struct Session {
     init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, language: Language = .english) {
         self.keyboard = keyboard
         self.grid = grid
-        let source: any CandidateSource = keyboard == .baseline ? TextCheckerSource(language: language == .english ? "en-US" : "nl_NL") : Lexicon.for(language)
-        let corrector = Corrector(source: source, phrases: keyboard == .baseline ? nil : .for(language))
+        let corrector = keyboard == .baseline ? Corrector(source: TextCheckerSource(language: language == .dutch ? "nl_NL" : "en-US")) : Corrector.for(language)
         corrector.grid = grid
         engine.corrector = corrector
     }
@@ -249,7 +281,7 @@ struct Prediction {
     var words = 0, first = 0, topThree = 0
 
     init(language: Language = .english) {
-        engine.corrector = Corrector(source: Lexicon.for(language), phrases: .for(language))
+        engine.corrector = Corrector.for(language)
     }
 
     mutating func type(_ phrase: [String]) {

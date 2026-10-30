@@ -492,8 +492,33 @@ noise; the English evaluation is unchanged; all existing tests pass.
 Open:
 - Installed but not yet typed with on the iPhone: memory with nl.lexicon loaded, and how
   it feels.
-- No automatic language detection; switching is by hand.
+- ~~No automatic language detection; switching is by hand.~~ Done 2026-10-30, see below.
 - Dutch capitalization of "ij" at a sentence start ("IJs") isn't done.
+
+**English & Nederlands (2026-10-30)**, asked for by the owner "like Apple does it": a
+third choice, EN+NL in the 123 menu. `Mixture` (KeyboardCore) holds both languages with
+weights; P(word) = Σ weight × P(word | language) at the lexicon level of Hex's language
+model, next words mix the two phrase tables, and the decoder searches both tries. The
+weights come from the last 12 words before the caret (each earlier word counting 0.8 of
+the next, a word a language lacks at P = 10⁻⁷), and each language keeps at least 5%, so a
+message can switch. With one language every path goes straight to its lexicon, and the
+English and Dutch numbers are unchanged. Learned words for both go in
+`typing-memory-en+nl.json`; emoji suggestions are off.
+
+`Evaluation.both` types the English and the Dutch phrases alternately with one corrector;
+each phrase starts with the weights the other language left, so the first words of each
+are the hard case. Autocorrect, decoder (learning):
+
+| noise | 0.15 | 0.25 | 0.35 |
+| --- | --- | --- | --- |
+| English alone | 99.8% (99.9%) | 97.3% (97.1%) | 88.6% (91.2%) |
+| English in EN+NL | 99.9% (99.9%) | 97.1% (96.8%) | 87.5% (89.8%) |
+| Dutch alone | 99.5% (99.4%) | 97.3% (97.2%) | 88.5% (90.6%) |
+| Dutch in EN+NL | 99.5% (99.6%) | 96.0% (95.6%) | 85.0% (87.6%) |
+
+Predictions, top 3 for a new user: chat 19.8% (20.2% alone), chat-nl 27.6% (28.2%).
+Typical cross-language slips at high noise: "get" → "het", "must" → "niet".
+Tests: `MixtureTests` (6), `BilingualTests` (4), `LanguageTests.testBothLanguages…` (UI).
 
 ## Updating Espanso
 

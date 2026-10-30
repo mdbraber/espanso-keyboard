@@ -48,7 +48,7 @@ final class SettingsViewController: UITableViewController {
 
     private static let sourcesFooter = "With Allow Full Access on, Hex sends each source the text of the field you’re typing in, except passwords and codes, and shows the hints it answers with above the keys. Tap a hint to hide it."
 
-    private static let languageFooter = "Hold 123 to switch between English and Nederlands while you type. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement."
+    private static let languageFooter = "Hold 123 to switch between English, Nederlands and both while you type; with both, Hex leans toward the language you’re writing. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement."
 
     private static let oneHandedFooter = "Hold 123 and slide to move the keys toward one thumb."
 

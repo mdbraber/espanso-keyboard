@@ -31,7 +31,7 @@ extension Lexicon {
 
     static func `for`(_ language: Language) -> Lexicon {
         switch language {
-        case .english: english
+        case .english, .both: english
         case .dutch: dutch
         }
     }
@@ -45,8 +45,17 @@ extension Phrases {
 
     static func `for`(_ language: Language) -> Phrases {
         switch language {
-        case .english: english
+        case .english, .both: english
         case .dutch: dutch
         }
+    }
+}
+
+extension Corrector {
+    /// A corrector for the language; for both, English and Dutch mixed by what you're writing.
+    public static func `for`(_ language: Language) -> Corrector {
+        let parts = language.parts
+        return Corrector(source: Lexicon.for(parts[0]), phrases: .for(parts[0]),
+                         mixing: parts.dropFirst().map { (lexicon: Lexicon.for($0), phrases: Phrases.for($0)) })
     }
 }

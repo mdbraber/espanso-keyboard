@@ -18,6 +18,8 @@ public final class Corrector {
     }
 
     let lexicon: Lexicon?
+    /// The languages, weighed by what you're writing; with one, just `lexicon` and `phrases` (espanso-keyboard).
+    public private(set) var mixture: Mixture
     private var cachedModel: LanguageModel?
     private var rankings: [Ranking: [Candidate]] = [:]
     private var generation = 0
@@ -29,15 +31,32 @@ public final class Corrector {
 
     /// With a `Lexicon` as its source, the corrector decodes your taps against your own touch model and words;
     /// any other source (like `UITextChecker`) only corrects spelling. `Phrases` tell it what words follow which.
-    public init(source: any CandidateSource, phrases: Phrases? = nil) {
+    /// `mixing` adds languages to the source's, weighed by the words you've typed (espanso-keyboard).
+    public init(source: any CandidateSource, phrases: Phrases? = nil, mixing others: [(lexicon: Lexicon, phrases: Phrases?)] = []) {
         self.source = source
         self.phrases = phrases
         self.lexicon = source as? Lexicon
+        let main = (source as? Lexicon).map { [Mixture.Part(lexicon: $0, phrases: phrases)] } ?? []
+        mixture = Mixture(main.isEmpty ? [] : main + others.map { Mixture.Part(lexicon: $0.lexicon, phrases: $0.phrases) })
+    }
+
+    /// Weighs the languages by the words before `text`'s last one (the one being typed), if there are several.
+    public func weigh(before text: String) {
+        guard mixture.isMixed else { return }
+        var words = text.suffix(400).split { !Words.isWordCharacter($0) }.map(String.init)
+        if let last = text.last, Words.isWordCharacter(last), !words.isEmpty { words.removeLast() }
+        let before = mixture.parts.map(\.weight)
+        mixture.weigh(by: words.filter { !$0.contains(where: \.isNumber) })
+        guard zip(before, mixture.parts.map(\.weight)).contains(where: { abs($0 - $1) > 1e-6 }) else { return }
+        cachedModel = nil
+        rankings = [:]
+        generation += 1
     }
 
     /// A corrector with the same words, touches and grid, and caches of its own.
     func snapshot() -> Corrector {
         let copy = Corrector(source: source, phrases: phrases)
+        copy.mixture = mixture
         copy.replacements = replacements
         copy.names = names
         copy.memory = memory
@@ -62,7 +81,7 @@ public final class Corrector {
     /// Contact names from `UILexicon` include everyday words ("A", "My", "The"). Typed lowercase, those mean the word,
     /// so a name the lexicon spells lowercase is left out.
     public func setNames(_ words: [String]) {
-        let names = words.filter { lexicon?.canonical($0) != $0.lowercased() }
+        let names = words.filter { lexicon == nil || mixture.canonical($0) != $0.lowercased() }
         self.names = Dictionary(names.map { ($0.lowercased(), $0) }) { first, _ in first }
     }
 
@@ -81,10 +100,10 @@ public final class Corrector {
         guard guessing else { return nil }
         // Accents typed on purpose (a held key) stand.
         if lexicon != nil, Lexicon.hasAccents(word.text) { return nil }
-        if let lexicon {
+        if lexicon != nil {
             let ranked = ranked(word)
             guard let best = ranked.first(where: { !$0.isCompletion }), best.word != word.text else { return nil }
-            if best.isLiteral { return lexicon.canonical(lower) == best.word && best.word != lower ? Words.matchCase(best.word, to: text) : nil }
+            if best.isLiteral { return mixture.canonical(lower) == best.word && best.word != lower ? Words.matchCase(best.word, to: text) : nil }
             if isKnown(word), let literal = ranked.first(where: \.isLiteral), literal.logLikelihood >= best.logLikelihood { return nil }
             return Words.matchCase(best.word, to: text)
         }
@@ -126,8 +145,8 @@ public final class Corrector {
         var words = (previous.map(memory.predictions(after:)) ?? []) + source.predictions(after: context)
         if let lexicon {
             let model = languageModel(lexicon)
-            let phrased = phrases?.next(after: previous, earlier: earlier).map { lexicon.canonical($0) ?? $0 } ?? []
-            words = (words + phrased + lexicon.mostFrequent(count: 6))
+            let phrased = mixture.next(after: previous, earlier: earlier)
+            words = (words + phrased + mixture.mostFrequent(count: 6))
                 .map { ($0, model.logPrediction($0, after: previous, earlier: earlier)) }
                 .sorted { $0.1 > $1.1 }
                 .map(\.0)
@@ -149,8 +168,9 @@ public final class Corrector {
 
     private func isSpelled(_ word: String) -> Bool {
         let lower = word.lowercased()
-        if source.isWord(word) || memory.isKept(lower) || names[lower] != nil || replacements[lower] != nil { return true }
-        return lower.hasSuffix("'s") && source.isWord(String(word.dropLast(2)))
+        let isWord = { (word: String) in self.lexicon == nil ? self.source.isWord(word) : self.mixture.isWord(word) }
+        if isWord(word) || memory.isKept(lower) || names[lower] != nil || replacements[lower] != nil { return true }
+        return lower.hasSuffix("'s") && isWord(String(word.dropLast(2)))
     }
 }
 
@@ -176,7 +196,7 @@ extension Corrector {
     private func rank(_ typed: TypedWord, alone: Bool) -> [Candidate] {
         guard let lexicon, !typed.text.isEmpty else { return [] }
         let words = alone ? TypingMemory() : memory
-        let model = alone ? LanguageModel(lexicon: lexicon, memory: words) : languageModel(lexicon)
+        let model = alone ? LanguageModel(mixture: mixture, memory: words) : languageModel(lexicon)
         let taps = evidence(for: typed, touches: memory.touches)
         let literal = typed.text.lowercased()
         let literalKey = Lexicon.key(literal)
@@ -191,12 +211,14 @@ extension Corrector {
         func likelihood(_ word: String, completing: Bool = false) -> Double {
             Decoder.logLikelihood(of: word, given: taps, touches: memory.touches, on: grid, completing: completing)
         }
-        for result in Decoder(lexicon: lexicon).decode(taps) {
-            consider(result.word, logLikelihood: likelihood(result.word, completing: result.isCompletion), isCompletion: result.isCompletion)
+        for part in mixture.parts {
+            for result in Decoder(lexicon: part.lexicon).decode(taps) {
+                consider(result.word, logLikelihood: likelihood(result.word, completing: result.isCompletion), isCompletion: result.isCompletion)
+            }
         }
-        let literalWord = lexicon.canonical(literal) ?? typed.text
+        let literalWord = mixture.canonical(literal) ?? typed.text
         consider(literalWord, logLikelihood: likelihood(literalWord), isCompletion: false)
-        for word in words.familiar where word.count + 1 >= taps.count && lexicon.logProbability(of: word) == nil {
+        for word in words.familiar where word.count + 1 >= taps.count && !mixture.isWord(word) {
             let exact = likelihood(word)
             let completed = likelihood(word, completing: true)
             consider(word, logLikelihood: max(exact, completed), isCompletion: completed > exact)
@@ -209,7 +231,7 @@ extension Corrector {
     /// apostrophe added ("its" → "it's") doesn't count against it.
     func isKnown(_ word: TypedWord) -> Bool {
         if memory.isKept(word.text) { return true }
-        guard lexicon?.isWord(word.text) == true || memory.count(of: word.text) > 1 else { return false }
+        guard (lexicon != nil && mixture.isWord(word.text)) || memory.count(of: word.text) > 1 else { return false }
         guard let perfect = ranked(TypedWord(word.text), alone: true).first(where: { !$0.isCompletion }), !perfect.isLiteral else { return true }
         return perfect.word.contains("'")
     }
@@ -230,7 +252,7 @@ extension Corrector {
 
     func languageModel(_ lexicon: Lexicon) -> LanguageModel {
         if let cachedModel { return cachedModel }
-        let model = LanguageModel(lexicon: lexicon, memory: memory, phrases: phrases)
+        let model = LanguageModel(mixture: mixture, memory: memory)
         cachedModel = model
         return model
     }
@@ -249,7 +271,7 @@ extension Corrector {
               }) else { return nil }
         let together = TypedWord((first?.text ?? "") + letter + (second?.text ?? ""), taps: (first?.taps ?? []) + [space] + (second?.taps ?? []),
                                  previous: first?.previous ?? second?.previous)
-        guard let word = ranked(together).first(where: { !$0.isCompletion && (lexicon.isWord($0.word) || memory.count(of: $0.word) > 1) }) else { return nil }
+        guard let word = ranked(together).first(where: { !$0.isCompletion && (mixture.isWord($0.word) || memory.count(of: $0.word) > 1) }) else { return nil }
         var apart = 0.0, apartLikelihood = asSpace
         for (index, part) in parts.enumerated() {
             let previous = index == 0 && first == nil ? "" : part.previous

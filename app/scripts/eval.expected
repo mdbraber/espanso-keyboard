@@ -41,3 +41,21 @@ EVAL nl predict corpus=phrases-nl user=new words=2777 top1=16.4% top3=26.9%
 EVAL nl predict corpus=phrases-nl user=learning words=2777 top1=15.1% top3=26.8%
 EVAL nl predict corpus=chat-nl user=new words=5561 top1=16.7% top3=28.2%
 EVAL nl predict corpus=chat-nl user=learning words=5561 top1=15.7% top3=28.0%
+EVAL both corpus=en noise=0.0 keyboard=decoder words=2714 raw=100.0% autocorrect=99.9% top3=100.0% next3=24.0% fixed=0 broken=2 ["ides→sides", "racketball→racquetball"]
+EVAL both corpus=nl noise=0.0 keyboard=decoder words=2777 raw=99.8% autocorrect=99.6% top3=100.0% next3=24.7% fixed=6 broken=12 ["wei→wie", "aten→laten", "neen→neem", "yanni→hanni", "yanni→hanni", "ziri→siri", "egyptologe→egyptologie", "honkbalfan→honkbalteam"]
+EVAL both corpus=en noise=0.15 keyboard=decoder words=2714 raw=99.1% autocorrect=99.9% top3=100.0% next3=23.9% fixed=24 broken=2 ["ides→sides", "racketball→racquetball"]
+EVAL both corpus=nl noise=0.15 keyboard=decoder words=2777 raw=99.1% autocorrect=99.5% top3=100.0% next3=24.7% fixed=21 broken=12 ["wei→wie", "aten→laten", "neen→neem", "yanni→yann", "yanni→yann", "ziri→siri", "egyptologe→egyptologie", "honkbalfan→honkbalteam"]
+EVAL both corpus=en noise=0.25 keyboard=decoder words=2714 raw=88.0% autocorrect=97.1% top3=98.8% next3=23.3% fixed=251 broken=3 ["ides→sides", "out→our", "if→of"]
+EVAL both corpus=nl noise=0.25 keyboard=decoder words=2777 raw=87.2% autocorrect=96.0% top3=98.8% next3=23.8% fixed=255 broken=10 ["wei→wie", "aten→laten", "neen→neem", "yanni→yann", "yanni→yann", "ziri→zei", "egyptologe→egyptologie", "honkbalfan→honkbalteam"]
+EVAL both corpus=en noise=0.35 keyboard=decoder words=2714 raw=59.5% autocorrect=87.5% top3=94.0% next3=20.3% fixed=772 broken=10 ["if→of", "ides→idee", "not→nor", "treat→great", "worry→worth", "hate→gate", "must→niet", "mind→kind"]
+EVAL both corpus=nl noise=0.35 keyboard=decoder words=2777 raw=58.0% autocorrect=85.0% top3=93.2% next3=21.4% fixed=756 broken=7 ["heel→veel", "aten→laten", "lunchte→lynchte", "yanni→yank", "ziri→zei", "gemakkelijkers→gemakkelijker", "hele→held"]
+EVAL both corpus=en noise=0.0 keyboard=learning words=2714 raw=100.0% autocorrect=100.0% top3=100.0% next3=24.0% fixed=0 broken=1 ["ides→sides"]
+EVAL both corpus=nl noise=0.0 keyboard=learning words=2777 raw=99.8% autocorrect=99.8% top3=100.0% next3=24.8% fixed=6 broken=6 ["wei→wie", "aten→laten", "egyptologe→egyptologie", "gemakkelijkers→gemakkelijker", "menen→mensen", "methamfetamines→methamfetamine"]
+EVAL both corpus=en noise=0.15 keyboard=learning words=2714 raw=99.5% autocorrect=99.9% top3=100.0% next3=23.9% fixed=11 broken=1 ["ides→sides"]
+EVAL both corpus=nl noise=0.15 keyboard=learning words=2777 raw=99.4% autocorrect=99.6% top3=100.0% next3=24.7% fixed=14 broken=9 ["wei→wie", "aten→laten", "yanni→yann", "yanni→yann", "egyptologe→egyptologie", "gemakkelijkers→gemakkelijker", "menen→mensen", "methamfetamines→methamfetamine"]
+EVAL both corpus=en noise=0.25 keyboard=learning words=2714 raw=88.1% autocorrect=96.8% top3=98.7% next3=23.2% fixed=241 broken=3 ["ides→sides", "out→our", "if→of"]
+EVAL both corpus=nl noise=0.25 keyboard=learning words=2777 raw=87.1% autocorrect=95.6% top3=98.5% next3=23.5% fixed=244 broken=8 ["aten→laten", "yanni→yann", "yanni→yann", "ziri→zei", "egyptologe→egyptologie", "honkbalfan→honkbalteam", "gemakkelijkers→gemakkelijker", "bingedrinken→ingedronken"]
+EVAL both corpus=en noise=0.35 keyboard=learning words=2714 raw=59.1% autocorrect=89.8% top3=94.4% next3=21.0% fixed=845 broken=13 ["if→of", "nor→not", "ides→idee", "tire→tide", "cares→cared", "get→het", "so→do", "get→het"]
+EVAL both corpus=nl noise=0.35 keyboard=learning words=2777 raw=58.8% autocorrect=87.6% top3=94.2% next3=21.6% fixed=813 broken=12 ["ken→men", "ge→he", "aten→laten", "yanni→yank", "ziri→zei", "hen→hem", "verte→verre", "kam→kan"]
+EVAL both predict corpus=chat user=new words=7233 top1=10.9% top3=19.8%
+EVAL both predict corpus=chat-nl user=new words=5561 top1=16.8% top3=27.6%

@@ -148,6 +148,7 @@ extension TypingEngine {
     /// The ranking behind stale suggestions, packed to run on another thread. Only a lexicon ranks off the main thread.
     public func suggestionJob() -> SuggestionJob? {
         guard suggestionsAreStale, let corrector, corrector.lexicon != nil else { return nil }
+        corrector.weigh(before: text.before)
         var copy = self
         copy.corrector = corrector.snapshot()
         return SuggestionJob(engine: copy)
@@ -175,6 +176,7 @@ extension TypingEngine {
         let text = self.text.before
         let word = Words.current(in: text)
         guard !word.isEmpty else { return }
+        corrector.weigh(before: text)
         var final = String(word), typedText = final
         var previous = Words.previous(before: word, in: text)
         let midWord = self.text.after?.first.map(Words.isWordCharacter) ?? false
@@ -288,6 +290,7 @@ extension TypingEngine {
         let text = self.text.before
         let word = Words.current(in: text)
         let inWords = layer == .letters && correcting && (word.isEmpty || Words.isCorrectable(word, in: text))
+        corrector?.weigh(before: text)
         keyMap = corrector?.keyMap(revision: revision, after: inWords ? String(word) : nil)
         guard showsSuggestions else { return suggestions = [] }
         suggestionsBefore = String(text[..<word.startIndex])

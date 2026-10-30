@@ -5,20 +5,25 @@
 /// your next-word counts → your word counts → the lexicon → a word the lexicon doesn't know, spelled letter by
 /// letter. How often you keep such new words is itself learned: (new + 1) / (all + 2), Laplace's rule of succession.
 struct LanguageModel {
-    let lexicon: Lexicon
+    let mixture: Mixture
     let memory: TypingMemory
-    let phrases: Phrases?
     let novelty: Double
 
     static let spellingLogProbability = -Math.log(Double(Lexicon.alphabet))
 
     init(lexicon: Lexicon, memory: TypingMemory, phrases: Phrases? = nil) {
-        self.lexicon = lexicon
+        self.init(mixture: Mixture([Mixture.Part(lexicon: lexicon, phrases: phrases)]), memory: memory)
+    }
+
+    /// Over several languages at once (espanso-keyboard): the lexicon level is their weighted mixture.
+    init(mixture: Mixture, memory: TypingMemory) {
+        self.mixture = mixture
         self.memory = memory
-        self.phrases = phrases
-        let novel = memory.counts.reduce(0) { $0 + (lexicon.logProbability(of: $1.key) == nil ? $1.value : 0) }
+        let novel = memory.counts.reduce(0) { $0 + (mixture.isWord($1.key) ? 0 : $1.value) }
         novelty = (Double(novel) + 1) / (Double(memory.total) + 2)
     }
+
+    var lexicon: Lexicon { mixture.parts[0].lexicon }
 
     func logProbability(_ word: String, after previous: String?) -> Double {
         Math.log(probability(word, after: previous, earlier: nil, phrased: false))
@@ -37,7 +42,7 @@ struct LanguageModel {
             let types = Double(memory.counts.count)
             p = (Double(memory.count(of: word)) + types * p) / (Double(memory.total) + types)
         }
-        if phrased, let phrases { p = phrases.probability(of: word, after: previous, earlier: earlier, below: p) }
+        if phrased, mixture.hasPhrases { p = mixture.phraseProbability(of: word, after: previous, earlier: earlier, below: p) }
         if let previous {
             let (count, total, types) = memory.count(of: word, after: previous)
             if total > 0 { p = (Double(count) + Double(types) * p) / Double(total + types) }
@@ -46,13 +51,14 @@ struct LanguageModel {
     }
 
     func lexical(_ word: String) -> Double {
-        let known = lexicon.logProbability(of: word).map(Math.exp) ?? 0
+        let known = mixture.logProbability(of: word).map(Math.exp) ?? 0
         return (1 - novelty) * known + novelty * Math.exp(Self.spellingLogProbability * Double(Lexicon.letters(word).count + 1))
     }
 
     /// P(next letter | the letters so far), over the lexicon and novel spellings, and P(the word ends here) as `" "`.
     /// Before a word starts, `" "` is how often you type a second space, by the rule of succession.
     func next(after prefix: String) -> [String: Double] {
+        if mixture.isMixed { return mixedNext(after: prefix) }
         let length = Double(Lexicon.letters(prefix).count)
         let node = lexicon.node(for: prefix)
         let novel = { (letters: Double) in novelty * Math.exp(Self.spellingLogProbability * letters) }
@@ -70,6 +76,26 @@ struct LanguageModel {
         } else {
             let ends = node.flatMap(lexicon.logWord).map { (1 - novelty) * Math.exp($0) } ?? 0
             result[" "] = (ends + novel(length + 1)) / total
+        }
+        return result
+    }
+
+    /// `next(after:)` over the mixture of languages (espanso-keyboard).
+    private func mixedNext(after prefix: String) -> [String: Double] {
+        let length = Double(Lexicon.letters(prefix).count)
+        let novel = { (letters: Double) in novelty * Math.exp(Self.spellingLogProbability * letters) }
+        let total = (1 - novelty) * mixture.mass(startingWith: prefix) + novel(length)
+        var result: [String: Double] = [:]
+        for (index, label) in Lexicon.labels.enumerated() {
+            let longer = prefix + String(UnicodeScalar(Lexicon.letter(at: index)))
+            result[label] = ((1 - novelty) * mixture.mass(startingWith: longer) + novel(length + 1)) / total
+        }
+        if prefix.isEmpty {
+            let space = (Double(memory.spacesAfterSpace) + 1) / (Double(memory.keysAfterSpace) + 2)
+            for (key, p) in result { result[key] = p * (1 - space) }
+            result[" "] = space
+        } else {
+            result[" "] = ((1 - novelty) * mixture.ending(prefix) + novel(length + 1)) / total
         }
         return result
     }
