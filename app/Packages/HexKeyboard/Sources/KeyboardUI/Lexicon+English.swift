@@ -51,6 +51,17 @@ extension Phrases {
     }
 }
 
+extension EmojiCatalog {
+    nonisolated static let dutch: EmojiCatalog = {
+        let url = Bundle.module.url(forResource: "emoji-nl", withExtension: "txt")!
+        return EmojiCatalog(text: try! String(contentsOf: url, encoding: .utf8))
+    }()
+
+    nonisolated static func `for`(_ language: Language) -> EmojiCatalog {
+        language == .dutch ? dutch : english
+    }
+}
+
 extension Corrector {
     /// A corrector for the language; for both, English and Dutch mixed by what you're writing.
     public static func `for`(_ language: Language) -> Corrector {

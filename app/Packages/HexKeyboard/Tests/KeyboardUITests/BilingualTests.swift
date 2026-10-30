@@ -42,6 +42,22 @@ struct BilingualTests {
         #expect(typed("thanks see you tomorrow ", after: "ik kom morgen langs. ") == "thanks see you tomorrow ")
     }
 
+    @Test func emojiComeFromTheLanguageBeingWritten() {
+        func emoji(after text: String) -> [String] {
+            var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
+            engine.corrector = Corrector.for(.both)
+            engine.emojiCatalogs = [EmojiCatalog.english, EmojiCatalog.dutch]
+            let document = Document()
+            engine.documentChanged(document)
+            for character in text { engine.perform(character == " " ? .space : .character(String(character)), in: document) }
+            return engine.emojiSuggestions
+        }
+        #expect(emoji(after: "ik heb een hond").contains("🐶"))
+        #expect(emoji(after: "i have a dog").contains("🐶"))
+        #expect(emoji(after: "ik weet niet wat die").isEmpty, "Dutch die, not English die")
+        #expect(!emoji(after: "i think he will die").isEmpty)
+    }
+
     @Test func predictsInTheLanguageBeingWritten() {
         var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
         engine.corrector = Corrector.for(.both)

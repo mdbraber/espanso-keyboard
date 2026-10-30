@@ -35,9 +35,9 @@ open class HexKeyboardViewController: UIInputViewController {
     private var deleteRepeat: DeleteRepeat?
     private let haptics = KeyHaptics()
     private let sources = Sources()
-    /// The language the corrector was made for, and the English emoji, once loaded (espanso-keyboard).
+    /// The language the corrector was made for, and each language's emoji index, once loaded (espanso-keyboard).
     private var language: Language?
-    private var emojiCatalog: EmojiCatalog?
+    private var emojiCatalogs: [Language: EmojiCatalog] = [:]
 
     override open func loadView() {
         inputView = KeyboardInputView(frame: .zero, inputViewStyle: .default)
@@ -102,9 +102,9 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
         useLanguage()
         Task { [weak self] in
-            let catalog = await Task.detached(priority: .userInitiated) { EmojiCatalog.english }.value
-            self?.emojiCatalog = catalog
-            if self?.language == .english { self?.engine.emojiCatalog = catalog }
+            let catalogs = await Task.detached(priority: .userInitiated) { [Language.english: EmojiCatalog.english, .dutch: EmojiCatalog.dutch] }.value
+            self?.emojiCatalogs = catalogs
+            self?.useEmoji()
             self?.engine.suggestionsChanged()
             self?.render()
         }
@@ -316,8 +316,13 @@ open class HexKeyboardViewController: UIInputViewController {
         followEdit(from: before, by: Edit(event))
     }
 
+    /// Each language of the mixture suggests emoji from its own index (espanso-keyboard).
+    private func useEmoji() {
+        engine.emojiCatalogs = (language ?? .english).parts.map { emojiCatalogs[$0] }
+    }
+
     /// Gives the corrector the word list, next words and learned words of the language in the settings, keeping where
-    /// your taps land. Emoji suggestions come from English words, so they're off in other languages (espanso-keyboard).
+    /// your taps land; emoji come from the index of the language you write in (espanso-keyboard).
     private func useLanguage() {
         let picked = engine.settings.language
         guard picked != language else { return }
@@ -333,7 +338,7 @@ open class HexKeyboardViewController: UIInputViewController {
             corrector.replacements = old.replacements
         }
         engine.corrector = corrector
-        engine.emojiCatalog = picked == .english ? emojiCatalog : nil
+        useEmoji()
         engine.suggestionsChanged()
         learnReplacements()
     }

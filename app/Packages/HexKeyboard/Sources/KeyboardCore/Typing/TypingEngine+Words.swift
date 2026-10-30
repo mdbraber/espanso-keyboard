@@ -284,6 +284,14 @@ extension TypingEngine {
         }
     }
 
+    /// The emoji index of the language you're writing in (espanso-keyboard).
+    var leadingEmojiCatalog: EmojiCatalog? {
+        guard !emojiCatalogs.isEmpty else { return emojiCatalog }
+        let parts = corrector?.mixture.parts ?? []
+        let leading = parts.indices.max { parts[$0].weight < parts[$1].weight } ?? 0
+        return emojiCatalogs.indices.contains(leading) ? emojiCatalogs[leading] : nil
+    }
+
     mutating func refreshSuggestions() {
         suggestionsAreStale = false
         emojiSuggestions = []
@@ -295,7 +303,7 @@ extension TypingEngine {
         guard showsSuggestions else { return suggestions = [] }
         suggestionsBefore = String(text[..<word.startIndex])
         let named = word.isEmpty && text.hasSuffix(" ") ? Words.current(in: String(text.dropLast())) : word
-        emojiSuggestions = emojiCatalog?.suggestions(for: String(named), history: emojiHistory) ?? []
+        emojiSuggestions = leadingEmojiCatalog?.suggestions(for: String(named), history: emojiHistory) ?? []
         guard let corrector else { return suggestions = [] }
         let typed = TypedWord(String(word), taps: typing.letters, previous: Words.previous(before: word, in: text))
         if let revert, revert.isOffered(before: text) {

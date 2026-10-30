@@ -503,7 +503,7 @@ weights come from the last 12 words before the caret (each earlier word counting
 the next, a word a language lacks at P = 10⁻⁷), and each language keeps at least 5%, so a
 message can switch. With one language every path goes straight to its lexicon, and the
 English and Dutch numbers are unchanged. Learned words for both go in
-`typing-memory-en+nl.json`; emoji suggestions are off.
+`typing-memory-en+nl.json`.
 
 `Evaluation.both` types the English and the Dutch phrases alternately with one corrector;
 each phrase starts with the weights the other language left, so the first words of each
@@ -519,6 +519,16 @@ are the hard case. Autocorrect, decoder (learning):
 Predictions, top 3 for a new user: chat 19.8% (20.2% alone), chat-nl 27.6% (28.2%).
 Typical cross-language slips at high noise: "get" → "het", "must" → "niet".
 Tests: `MixtureTests` (6), `BilingualTests` (4), `LanguageTests.testBothLanguages…` (UI).
+
+**Emoji in Dutch (2026-10-30).** `emoji-nl.txt` (5,487 words) is made by
+`scripts/emoji-nl.py` from CLDR's Dutch annotations, ranked like Hex's English
+candidates, then read through: categories, numbers and words whose emoji nobody typing
+them would want find none ("dag", "trouwens", "bomen"), and FIRST fixes the order where
+the ranking doesn't ("hart" ❤️ before the anatomical 🫀). Words ending in s that aren't
+plurals get an empty line, or Hex's English plural rule finds "trouwen" for "trouwens".
+The engine has one index per language of the mixture (`TypingEngine.emojiCatalogs`)
+and uses the leading language's, so in EN+NL "die" after Dutch finds nothing and after
+English finds 💀. Tests: `DutchEmojiTests` (2), `BilingualTests.emojiComeFrom…`.
 
 ## Updating Espanso
 

@@ -85,3 +85,9 @@ hold only counts derived from it (per word, and the likeliest next words after e
 
 The Dutch test sentences (Tests/KeyboardUITests/phrases-nl.txt and chat-nl.txt, picked by scripts/tatoeba-nl.py) are
 from Tatoeba, https://tatoeba.org, CC BY 2.0 FR, https://creativecommons.org/licenses/by/2.0/fr/.
+
+emoji-nl.txt (espanso-keyboard) is made by scripts/emoji-nl.py from Unicode's emoji-test.txt (Emoji 16.0), CLDR 46's
+Dutch annotations, https://github.com/unicode-org/cldr/blob/release-46/common/annotations/nl.xml, and Unicode's emoji
+frequency, https://home.unicode.org/emoji/emoji-frequency/ (all under the Unicode License v3,
+https://www.unicode.org/license.txt, Copyright © 1991-2024 Unicode, Inc.), with the script's own lists of words that
+find none and of the emoji to put first.

@@ -4,6 +4,9 @@ public struct TypingEngine {
     public var emojiHistory = EmojiHistory()
     /// Finds emoji for the word in the suggestion bar.
     public var emojiCatalog: EmojiCatalog?
+    /// One emoji index per language of the corrector's mixture, in its order; the language you're writing in suggests
+    /// (espanso-keyboard). Empty: `emojiCatalog` suggests.
+    public var emojiCatalogs: [EmojiCatalog?] = []
     public private(set) var traits: InputTraits
     public internal(set) var suggestions: [Suggestion] = []
     /// Emoji for the word being typed, or the one just typed, which take the bar's last slot.
