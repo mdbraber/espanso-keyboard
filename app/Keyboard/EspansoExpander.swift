@@ -65,7 +65,9 @@ final class EspansoExpander: TextExpander {
         isEnabled && triggers.contains(shortcut.lowercased())
     }
 
-    var hasSnippets: Bool { !snippets.isEmpty }
+    /// Whether the suggestion bar shows the snippets button: there are snippets and the button isn't switched off.
+    var showsButton = true
+    var hasSnippets: Bool { showsButton && !snippets.isEmpty }
 
     func showSnippets() {
         host?.showSnippetPanel()

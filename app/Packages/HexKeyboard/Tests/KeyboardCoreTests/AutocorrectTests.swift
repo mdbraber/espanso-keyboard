@@ -149,6 +149,20 @@ struct AutocorrectTests {
         #expect(document.text == "hi Bassim ")
     }
 
+    @Test func contactNamesWaitForThreeLettersAndTheLikeliestWord() {
+        var engine = TypingEngine()
+        engine.corrector = Corrector(source: testLexicon)
+        engine.corrector?.setNames(["Helga", "Hendrik", "Hella"])
+        let document = TestDocument("so ")
+        engine.documentChanged(document)
+        engine.type("he", in: document)
+        #expect(!engine.suggestions.contains { ["Helga", "Hendrik", "Hella"].contains($0.text) })
+        engine.type("l", in: document)
+        let shown = engine.suggestions.map(\.text)
+        #expect(shown.filter { ["Helga", "Hella"].contains($0) }.count == 1, "one name at most")
+        #expect(shown.firstIndex { ["Helga", "Hella"].contains($0) } ?? 0 > 1, "after the likeliest word: \(shown)")
+    }
+
     @Test func namesThatAreEverydayWordsStayLowercase() {
         var engine = TypingEngine()
         engine.corrector = Corrector(source: testLexicon)

@@ -15,6 +15,7 @@ final class KeyboardViewController: HexKeyboardViewController {
     override func viewWillAppear(_ animated: Bool) {
         loadSnippets()
         espanso?.isEnabled = EspansoShared.isEnabled
+        espanso?.showsButton = EspansoShared.showsButton
         closePanel()
         super.viewWillAppear(animated)
     }
@@ -27,6 +28,7 @@ final class KeyboardViewController: HexKeyboardViewController {
         let expander = current.flatMap(EspansoExpander.init(folder:))
         expander?.host = self
         expander?.isEnabled = EspansoShared.isEnabled
+        expander?.showsButton = EspansoShared.showsButton
         self.expander = expander
     }
 

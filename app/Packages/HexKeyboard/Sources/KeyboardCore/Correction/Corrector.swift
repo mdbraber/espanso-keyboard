@@ -104,10 +104,16 @@ public final class Corrector {
         }
         if correcting, let correction = correction(for: word, guessing: guessing) { add([correction], as: .correction) }
         let lower = word.text.lowercased()
-        add(names.filter { $0.key.count > lower.count && $0.key.hasPrefix(lower) }.values.sorted(), as: .candidate)
+        let named = names.filter { $0.key.count > lower.count && $0.key.hasPrefix(lower) }.values.sorted()
         if lexicon != nil {
-            add(ranked(word).filter { !$0.isLiteral }.map(\.word), as: .candidate)
+            // A contact name only after three letters and the likeliest word, so the address book doesn't take the bar
+            // from everyday words (espanso-keyboard).
+            let words = ranked(word).filter { !$0.isLiteral }.map(\.word)
+            add(words.prefix(1), as: .candidate)
+            if lower.count >= 3 { add(named.prefix(1), as: .candidate) }
+            add(words.dropFirst(), as: .candidate)
         } else {
+            add(named, as: .candidate)
             add(memory.completions(for: word.text), as: .candidate)
             add(source.completions(for: word.text), as: .candidate)
             if guessing, alternatives.count < 2 { add(source.guesses(for: word), as: .candidate) }

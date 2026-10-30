@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// match file, and Espanso's warnings (espanso-keyboard, plan steps 5 and 6).
 final class EspansoViewController: UITableViewController, UIDocumentPickerDelegate, UISearchResultsUpdating {
     private enum Row: Hashable {
-        case enabled, folder, reload, warning(String), snippet(Int32), file(String)
+        case enabled, button, folder, reload, warning(String), snippet(Int32), file(String)
     }
 
     private struct Section {
@@ -75,7 +75,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
 
     private var sections: [Section] {
         var sections = [
-            Section(footer: "When off, Hex types your triggers as they are. The snippets button above the keys still works.", rows: [.enabled]),
+            Section(footer: "When Expand Snippets is off, Hex types your triggers as they are; the snippets button above the keys still works. Snippets Button shows or hides that button.", rows: [.enabled, .button]),
             Section(footer: folderFooter, rows: [.folder, .reload]),
         ]
         let all = snippets.values.sorted { ($0.file, $0.triggers[0]) < ($1.file, $1.triggers[0]) }
@@ -128,6 +128,14 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             toggle.addAction(UIAction { [unowned toggle] _ in EspansoShared.isEnabled = toggle.isOn }, for: .valueChanged)
             cell.accessoryView = toggle
             cell.selectionStyle = .none
+        case .button:
+            content.text = "Snippets Button"
+            let toggle = UISwitch()
+            toggle.isOn = EspansoShared.showsButton
+            toggle.accessibilityIdentifier = "Snippets Button"
+            toggle.addAction(UIAction { [unowned toggle] _ in EspansoShared.showsButton = toggle.isOn }, for: .valueChanged)
+            cell.accessoryView = toggle
+            cell.selectionStyle = .none
         case .folder:
             content.text = "Espanso Folder"
             content.secondaryText = summary?.folderName ?? EspansoImport.rememberedFolder?.lastPathComponent ?? "Choose…"
@@ -175,7 +183,7 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
             guard let engine else { return }
             let inFile = snippets.values.filter { $0.file == file }.sorted { $0.triggers[0] < $1.triggers[0] }
             navigationController?.pushViewController(SnippetListViewController(file: file, snippets: inFile, engine: engine), animated: true)
-        case .enabled, .warning:
+        case .enabled, .button, .warning:
             break
         }
     }
