@@ -25,13 +25,6 @@ final class EspansoViewController: UITableViewController, UIDocumentPickerDelega
     private var snippets: [Int32: SnippetSummary] = [:]
     private var usage: [String: EspansoShared.Usage] = [:]
 
-    /// The last copy in one line, for the Espanso section in Keyboard Settings.
-    static var summary: String {
-        guard let summary = EspansoImport.lastSummary else { return "Hex types your Espanso snippets. Choose the folder you sync through iCloud Drive." }
-        let off = EspansoShared.isEnabled ? "" : " Expanding is off."
-        return "\(summary.snippets) snippets, copied \(summary.date.formatted(date: .abbreviated, time: .shortened)).\(off)"
-    }
-
     init() {
         super.init(style: .insetGrouped)
         title = "Espanso Snippets"

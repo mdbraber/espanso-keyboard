@@ -24,7 +24,7 @@ final class LanguageTests: XCTestCase {
         app.keys.matching(identifier: "hex.\(name)").firstMatch
     }
 
-    /// The menu holds ←, keyboard, →, EN, NL and EN+NL, 50 points each from x = 17.
+    /// The menu holds ←, keyboard, →, EN, NL and EN-NL, 50 points each from x = 17.
     private func holdNumbersAndPick(atX x: CGFloat) {
         let numbers = key("numbers")
         let pick = numbers.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x - numbers.frame.minX, dy: -35))

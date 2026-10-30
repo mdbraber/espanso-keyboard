@@ -13,8 +13,8 @@ public enum Language: String, Hashable, Sendable, CaseIterable, Codable {
         }
     }
 
-    /// Short, for the layer key's menu.
-    public var code: String { rawValue.uppercased() }
+    /// Short, for the layer key's menu and the space bar's corner.
+    public var code: String { self == .both ? "EN-NL" : rawValue.uppercased() }
 
     /// The single languages it's made of.
     public var parts: [Language] { self == .both ? [.english, .dutch] : [self] }

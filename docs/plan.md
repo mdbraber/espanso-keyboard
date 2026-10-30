@@ -474,8 +474,9 @@ noise; the English evaluation is unchanged; all existing tests pass.
   wrongly changes, even typed dead center: rare words next to common ones ("at" → "dat",
   "aten" → "laten", "wei" → "wie") and names Tatoeba uses.
 - Switching: `Language` and `KeyboardSettings.language`; the 123 hold menu gained EN and
-  NL after the hands (`MenuItem`); the space bar names the language; Keyboard Settings ›
-  Language and the Settings app have a Language choice; `-HexLanguage en|nl` for tests.
+  NL after the hands (`MenuItem`); the space bar's corner shows the language's code
+  beside "hex" ("hex · NL"; at first its full name across the space bar, changed at the
+  owner's request 2026-10-30); Keyboard Settings › Language and the Settings app have a Language choice; `-HexLanguage en|nl` for tests.
   `HexKeyboardViewController.useLanguage` swaps the corrector and keeps learned words per
   language (`typing-memory-nl.json` beside Hex's `typing-memory.json`), carrying the touch
   model over. The extension declares `PrimaryLanguage` `mul`. Emoji suggestions are off
@@ -496,7 +497,7 @@ Open:
 - Dutch capitalization of "ij" at a sentence start ("IJs") isn't done.
 
 **English & Nederlands (2026-10-30)**, asked for by the owner "like Apple does it": a
-third choice, EN+NL in the 123 menu. `Mixture` (KeyboardCore) holds both languages with
+third choice, EN-NL in the 123 menu. `Mixture` (KeyboardCore) holds both languages with
 weights; P(word) = Σ weight × P(word | language) at the lexicon level of Hex's language
 model, next words mix the two phrase tables, and the decoder searches both tries. The
 weights come from the last 12 words before the caret (each earlier word counting 0.8 of
