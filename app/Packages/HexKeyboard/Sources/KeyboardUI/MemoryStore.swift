@@ -15,8 +15,9 @@ public enum MemoryStore {
     private static let resetsKey = "memoryResets"
     private static let touchesChanged = "com.shahidy.hexkeyboard.touches"
 
-    private static var url: URL {
-        URL.applicationSupportDirectory.appending(path: "typing-memory.json")
+    /// English keeps Hex's file; each other language has its own (espanso-keyboard).
+    private static func url(_ language: Language) -> URL {
+        URL.applicationSupportDirectory.appending(path: language == .english ? "typing-memory.json" : "typing-memory-\(language.rawValue).json")
     }
 
     private static var sharedTouchesURL: URL? {
@@ -25,12 +26,26 @@ public enum MemoryStore {
 
     private static var resets: Int? { SettingsStore.value(forKey: resetsKey, sharing: false) as? Int }
 
-    static func load() -> TypingMemory {
-        guard let saved = try? JSONDecoder().decode(Saved.self, from: Data(contentsOf: url)), saved.resets == resets ?? saved.resets else { return TypingMemory() }
+    /// The words learned in `language`, with where your taps land from whichever language was saved last: the
+    /// keys are the same in every language (espanso-keyboard).
+    static func load(_ language: Language = .english) -> TypingMemory {
+        var memory = saved(language) ?? TypingMemory()
+        let latest = Language.allCases.max { modified($0) < modified($1) }
+        if let latest, latest != language, let touches = saved(latest)?.touches { memory.touches = touches }
+        return memory
+    }
+
+    private static func saved(_ language: Language) -> TypingMemory? {
+        guard let saved = try? JSONDecoder().decode(Saved.self, from: Data(contentsOf: url(language))), saved.resets == resets ?? saved.resets else { return nil }
         return saved.memory
     }
 
-    static func save(_ memory: TypingMemory, sharing: Bool) {
+    private static func modified(_ language: Language) -> Date {
+        (try? url(language).resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    }
+
+    static func save(_ memory: TypingMemory, language: Language = .english, sharing: Bool) {
+        let url = url(language)
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? JSONEncoder().encode(Saved(resets: resets ?? 0, memory: memory)).write(to: url, options: .atomic)
         guard sharing, let sharedTouchesURL, (try? JSONEncoder().encode(memory.touches).write(to: sharedTouchesURL, options: .atomic)) != nil else { return }

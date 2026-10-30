@@ -34,9 +34,10 @@ public struct LayoutContext: Hashable, Sendable {
         }.first
     }
 
-    /// What holding the layer key offers: the one-handed layouts, where they apply.
-    public var menu: [OneHanded] {
-        allowsOneHanded ? OneHanded.menuOrder : []
+    /// What holding the layer key offers: the one-handed layouts, where they apply, then the languages
+    /// (espanso-keyboard).
+    public var menu: [MenuItem] {
+        (allowsOneHanded ? OneHanded.menuOrder.map(MenuItem.hand) : []) + Language.allCases.map(MenuItem.language)
     }
 }
 

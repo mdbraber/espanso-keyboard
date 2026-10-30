@@ -7,3 +7,9 @@ extension OneHanded {
     /// Left to right, as the hands sit in the layer menu.
     public static let menuOrder: [OneHanded] = [.left, .off, .right]
 }
+
+/// One choice in the layer key's menu (espanso-keyboard).
+public enum MenuItem: Hashable, Sendable {
+    case hand(OneHanded)
+    case language(Language)
+}

@@ -39,6 +39,7 @@ enum LaunchOptions {
 
     static func applyOneHanded() {
         if let hand = defaults.string(forKey: "HexOneHanded").flatMap(OneHanded.init) { SettingsStore.set(hand) }
+        if let language = defaults.string(forKey: "HexLanguage").flatMap(Language.init) { SettingsStore.set(language) }
     }
 
     static func configure(_ field: UITextView) {

@@ -33,7 +33,7 @@ extension KeyboardView {
             guard let view = keyView(at: point) else { continue }
             let tracked = TrackedTouch(keyView: view, start: point)
             self.tracked[ObjectIdentifier(touch)] = tracked
-            if view.key == menu.key, !menu.hands.isEmpty { tracked.menuFrame = view.frame }
+            if view.key == menu.key, !menu.items.isEmpty { tracked.menuFrame = view.frame }
             press(view, tracked: tracked)
             onEvent(.down(view.key, tapCount: touch.tapCount))
             if case .layer = view.key.action { tracked.mode = .slide }
@@ -123,7 +123,12 @@ extension KeyboardView {
             }
             alternates.hide()
         case .menu:
-            if commit, menu.hands.indices.contains(alternates.selection) { onEvent(.pick(menu.hands[alternates.selection])) }
+            if commit, menu.items.indices.contains(alternates.selection) {
+                switch menu.items[alternates.selection] {
+                case .hand(let hand): onEvent(.pick(hand))
+                case .language(let language): onEvent(.language(language))
+                }
+            }
             alternates.hide()
         case .trackpad:
             setLabelsVisible(true)
@@ -204,8 +209,15 @@ extension KeyboardView {
                 guard let self, let tracked, tracked.mode == .slide, let frame = tracked.menuFrame else { return }
                 tracked.mode = .menu
                 self.callout.hide()
-                let hands = self.menu.hands
-                self.alternates.show(symbols: hands.map(\.symbol), selected: hands.firstIndex(of: self.menu.current) ?? 0, over: frame, in: self.drawableBounds, metrics: self.metrics, theme: self.theme)
+                let items = self.menu.items
+                let selected = items.firstIndex(of: .hand(self.menu.current)) ?? items.firstIndex(of: .language(self.menu.language)) ?? 0
+                let shown = items.map { item -> AlternatesView.MenuChoice in
+                    switch item {
+                    case .hand(let hand): .symbol(hand.symbol)
+                    case .language(let language): .text(language.code)
+                    }
+                }
+                self.alternates.show(menu: shown, selected: selected, over: frame, in: self.drawableBounds, metrics: self.metrics, theme: self.theme)
             }
         }
     }

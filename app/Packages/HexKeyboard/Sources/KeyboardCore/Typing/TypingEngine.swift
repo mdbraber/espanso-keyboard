@@ -157,6 +157,9 @@ public struct TypingEngine {
         case .pick(let hand):
             settings.oneHanded = hand
             perform(.layer(.letters), in: document)
+        case .language(let language):
+            settings.language = language
+            perform(.layer(.letters), in: document)
         case .dictated(let heard):
             let joins = text.before.last.map { !$0.isWhitespace && !Words.openers.contains($0) } ?? false
             insertWhole((joins ? " " : "") + heard, in: document)

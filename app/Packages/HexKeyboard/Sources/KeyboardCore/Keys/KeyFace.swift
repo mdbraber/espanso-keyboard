@@ -34,6 +34,8 @@ public struct KeyFaceContext: Hashable, Sendable {
     public var shift: ShiftState
     public var returnKind: ReturnKind
     public var returnEnabled: Bool
+    /// Named on the space bar, as Apple names the keyboard's language there (espanso-keyboard).
+    public var language: Language?
 
     public init(device: DeviceClass, layer: KeyboardLayer, kind: InputKind, shift: ShiftState, returnKind: ReturnKind, returnEnabled: Bool) {
         self.device = device
@@ -56,7 +58,7 @@ extension KeyFace {
             secondary = key.secondary
             secondaryIsDimmed = !key.isPair
         case .space:
-            self.init(content: .none)
+            self.init(content: context.language.map { .smallText($0.name) } ?? .none)
             corner = "hex"
         case .delete:
             self.init(content: .symbol("delete.left"), alignment: edge)

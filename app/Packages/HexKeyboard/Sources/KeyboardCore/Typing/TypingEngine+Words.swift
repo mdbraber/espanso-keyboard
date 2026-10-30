@@ -87,7 +87,9 @@ extension TypingEngine {
 
     public func faces(on device: DeviceClass) -> KeyFaceContext {
         let returnEnabled = !traits.returnRequiresText || !text.before.isEmpty || !(text.after ?? "").isEmpty
-        return KeyFaceContext(device: device, layer: layer, kind: traits.kind, shift: shift, returnKind: traits.returnKind, returnEnabled: returnEnabled)
+        var context = KeyFaceContext(device: device, layer: layer, kind: traits.kind, shift: shift, returnKind: traits.returnKind, returnEnabled: returnEnabled)
+        context.language = settings.language
+        return context
     }
 
     /// Learns from the last word you kept. Call when typing pauses for good, like when the keyboard goes away.

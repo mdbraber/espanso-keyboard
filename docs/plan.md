@@ -415,6 +415,83 @@ Earlier list, kept for reference:
 - Matching snippets in Hex's suggestion bar, using `search`.
 - `import` between script files (a JavaScriptCore module loader limited to `scripts/`).
 
+## Step 7: Dutch
+
+Requested by the owner (2026-10-29): Dutch next to English, with autocorrect, suggestions
+and predictions, switched inside the keyboard. Hex's typing was good enough to build on
+(owner, same day), so this is an addition to Hex, not a change of host keyboard.
+
+1. Accents in the lexicon. Hex's trie holds a–z and the apostrophe. Keep that alphabet,
+   so taps decode as before, and store each word without its accents ("ideeen") with its
+   real spelling in a table after the trie ("ideeën"). Lookups drop accents first, and
+   the spelling comes back from the table, so typing "ideeen" gives "ideeën". A word you
+   type with accents yourself is left as you typed it. English must stay the same: Hex's
+   `scripts/eval` still ends with `EVAL matches eval.expected`.
+2. Dutch word list and counts (`nl.lexicon`, built by `scripts/lexicon-nl`): words from
+   OpenTaal's word list (BSD-3 / CC BY 3.0), counts from OPUS OpenSubtitles 2018 Dutch,
+   which is conversational like the English fiction counts.
+3. Dutch next words (`nl.phrases`) from the same subtitles.
+4. A Dutch test set from Tatoeba (CC BY 2.0 FR), kept apart from the training text, for
+   Hex's `Evaluation` (taps with noise, predictions).
+5. Switching: a Language setting in the app, English and Nederlands in the menu you get
+   by holding 123 (which already holds one-handed mode), and the language's name on the
+   space bar. The system globe key belongs to iOS and can't switch inside one keyboard.
+   Words learned are kept per language; where your taps land is shared.
+6. Emoji suggestions stay English-only, so in Dutch they're off.
+
+**Done when:** with Nederlands picked, "ik heb geen idee" types without corrections,
+"ideeen" becomes "ideeën" and predictions after "dank" include "je" (`DutchLexiconTests`),
+and picking NL from the 123 menu in the Simulator does the same through the keyboard
+(`LanguageTests`); the Dutch evaluation reports word accuracy close to English at the same
+noise; the English evaluation is unchanged; all existing tests pass.
+
+**Result (2026-10-30): built.**
+
+- Lexicon (`KeyboardCore/Correction/Lexicon.swift`): words are stored without accents
+  and a spelled flag points into a table after the trie, so en.lexicon is unchanged on
+  disk. `Lexicon.letters` folds case, accents and ’ to the 27 letters; spellings that
+  differ only in accents share a word spelled the commoner way ("een", not "één"; "voor",
+  not "vóór"). A word typed with accents isn't corrected. Folding ’ also means a
+  contraction typed with smart punctuation ("I’m") now reads as the word it is, which
+  moved one English number up: chat predictions for a learning user, top 3 30.3% →
+  30.6% (`eval.expected` updated; every other English line unchanged).
+- Data: `scripts/lexicon-nl` (186,174 words, 4.8 MB) and `scripts/phrases-nl` (50,070
+  contexts, 1.5 MB), both run on gloob in a few minutes from cached downloads in
+  `app/build/`. OpenTaal leaves out "ok", "okay", "hey" and a few more; the script adds
+  them. Subtitles write "'t" and "'n"; those aren't counted, or "t" and "n" would be
+  common words. Sources and licences in `Resources/LEXICON-LICENSE`. OpenSubtitles has
+  no licence of its own; only counts derived from it are shipped, as for the English.
+- Evaluation (`Evaluation.dutch`, 500 Tatoeba sentences typed without accents, 2,777
+  words), word accuracy after autocorrect:
+
+  | noise | 0 | 0.15 | 0.25 | 0.35 |
+  | --- | --- | --- | --- | --- |
+  | Dutch, decoder | 99.6% | 99.5% | 97.3% | 88.5% |
+  | English, decoder | 99.9% | 99.8% | 97.3% | 88.6% |
+  | Dutch, iOS spell checker | 98.0% | 97.6% | 82.0% | 48.5% |
+
+  Predictions, top 3: 26.9% (phrases-nl) and 28.2% (chat-nl) for a new user. Words it
+  wrongly changes, even typed dead center: rare words next to common ones ("at" → "dat",
+  "aten" → "laten", "wei" → "wie") and names Tatoeba uses.
+- Switching: `Language` and `KeyboardSettings.language`; the 123 hold menu gained EN and
+  NL after the hands (`MenuItem`); the space bar names the language; Keyboard Settings ›
+  Language and the Settings app have a Language choice; `-HexLanguage en|nl` for tests.
+  `HexKeyboardViewController.useLanguage` swaps the corrector and keeps learned words per
+  language (`typing-memory-nl.json` beside Hex's `typing-memory.json`), carrying the touch
+  model over. The extension declares `PrimaryLanguage` `mul`. Emoji suggestions are off
+  in Dutch.
+- Tests: `AccentTests` (6, KeyboardCore), `DutchLexiconTests` (5), `LanguageTests` (UI:
+  pick NL from the menu, "goede ideeen" → "Goede ideeën", back to EN, "teh" → "the").
+- Xcode doesn't always recopy a package's resource bundle into the app, the extension
+  or a test bundle when a resource is added; after adding one, delete the nested
+  `HexKeyboard_*.bundle` copies under `build/*/Build/Products` (the keyboard crashed on
+  the missing `nl.lexicon` until then).
+
+Open:
+- Not tried on the iPhone yet: memory with nl.lexicon loaded, and how it feels.
+- No automatic language detection; switching is by hand.
+- Dutch capitalization of "ij" at a sentence start ("IJs") isn't done.
+
 ## Updating Espanso
 
 The three Espanso libraries are pinned to one commit in `core/Cargo.toml`. To update:

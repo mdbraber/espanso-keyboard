@@ -1,0 +1,8 @@
+#!/bin/sh
+# Rebuilds Packages/HexKeyboard/Sources/KeyboardUI/Resources/nl.phrases (see scripts/phrases-nl.py for the source).
+# Needs build/lexicon-nl/words.tsv from scripts/lexicon-nl. Runs on the Mac (gloob), unlike scripts/phrases.
+set -e
+cd "$(dirname "$0")/.."
+nice -n 10 python3 scripts/phrases-nl.py build/lexicon-nl/words.tsv build/lexicon-nl build/phrases-nl
+cd Packages/HexKeyboard
+swift run -c release PhrasesBuilder ../../build/phrases-nl/contexts.tsv Sources/KeyboardUI/Resources/nl.phrases

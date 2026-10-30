@@ -11,10 +11,10 @@ let package = Package(
     targets: [
         .target(name: "KeyboardCore"),
         .target(name: "KeyboardArbiter"),
-        .target(name: "KeyboardUI", dependencies: ["KeyboardCore", "KeyboardArbiter"], exclude: ["Resources/LEXICON-LICENSE"], resources: [.copy("Resources/en.lexicon"), .copy("Resources/en.phrases"), .copy("Resources/emoji.txt")], swiftSettings: [.defaultIsolation(MainActor.self)]),
+        .target(name: "KeyboardUI", dependencies: ["KeyboardCore", "KeyboardArbiter"], exclude: ["Resources/LEXICON-LICENSE"], resources: [.copy("Resources/en.lexicon"), .copy("Resources/en.phrases"), .copy("Resources/nl.lexicon"), .copy("Resources/nl.phrases"), .copy("Resources/emoji.txt")], swiftSettings: [.defaultIsolation(MainActor.self)]),
         .executableTarget(name: "LexiconBuilder", dependencies: ["KeyboardCore"], path: "Tools/LexiconBuilder"),
         .executableTarget(name: "PhrasesBuilder", dependencies: ["KeyboardCore"], path: "Tools/PhrasesBuilder"),
         .testTarget(name: "KeyboardCoreTests", dependencies: ["KeyboardCore"]),
-        .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardUI"], resources: [.copy("phrases.txt"), .copy("chat.txt")]),
+        .testTarget(name: "KeyboardUITests", dependencies: ["KeyboardUI"], resources: [.copy("phrases.txt"), .copy("chat.txt"), .copy("phrases-nl.txt"), .copy("chat-nl.txt")]),
     ]
 )

@@ -79,10 +79,12 @@ public final class Corrector {
             return word.text == name || word.text == word.text.uppercased() ? nil : name
         }
         guard guessing else { return nil }
+        // Accents typed on purpose (a held key) stand.
+        if lexicon != nil, Lexicon.hasAccents(word.text) { return nil }
         if let lexicon {
             let ranked = ranked(word)
             guard let best = ranked.first(where: { !$0.isCompletion }), best.word != word.text else { return nil }
-            if best.isLiteral { return lexicon.canonical(lower) == best.word && best.word != lower ? best.word : nil }
+            if best.isLiteral { return lexicon.canonical(lower) == best.word && best.word != lower ? Words.matchCase(best.word, to: text) : nil }
             if isKnown(word), let literal = ranked.first(where: \.isLiteral), literal.logLikelihood >= best.logLikelihood { return nil }
             return Words.matchCase(best.word, to: text)
         }
@@ -171,10 +173,11 @@ extension Corrector {
         let model = alone ? LanguageModel(lexicon: lexicon, memory: words) : languageModel(lexicon)
         let taps = evidence(for: typed, touches: memory.touches)
         let literal = typed.text.lowercased()
+        let literalKey = Lexicon.key(literal)
         var candidates: [String: Candidate] = [:]
         func consider(_ word: String, logLikelihood: Double, isCompletion: Bool) {
-            let lower = word.lowercased()
-            let isLiteral = lower == literal
+            let lower = Lexicon.key(word)
+            let isLiteral = lower == literalKey
             let score = logLikelihood + model.logProbability(word, after: typed.previous)
             guard score > -.infinity, score > candidates[lower]?.logPosterior ?? -.infinity else { return }
             candidates[lower] = Candidate(word: word, logLikelihood: logLikelihood, logPosterior: score, isCompletion: isCompletion && !isLiteral, isLiteral: isLiteral)
@@ -187,7 +190,7 @@ extension Corrector {
         }
         let literalWord = lexicon.canonical(literal) ?? typed.text
         consider(literalWord, logLikelihood: likelihood(literalWord), isCompletion: false)
-        for word in words.familiar where word.utf8.count + 1 >= taps.count && lexicon.logProbability(of: word) == nil {
+        for word in words.familiar where word.count + 1 >= taps.count && lexicon.logProbability(of: word) == nil {
             let exact = likelihood(word)
             let completed = likelihood(word, completing: true)
             consider(word, logLikelihood: max(exact, completed), isCompletion: completed > exact)
@@ -206,7 +209,7 @@ extension Corrector {
     }
 
     func evidence(for typed: TypedWord, touches: TouchModel) -> [TapEvidence] {
-        let letters = typed.text.lowercased().utf8.map(Lexicon.fold)
+        let letters = Lexicon.letters(typed.text)
         let taps = typed.taps.count == letters.count ? typed.taps.map(Optional.some) : letters.map { _ in nil }
         let bounds = grid.bounds
         let stray = -Math.log(bounds.width * bounds.height)

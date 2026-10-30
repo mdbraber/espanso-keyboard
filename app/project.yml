@@ -104,7 +104,7 @@ targets:
           NSExtensionAttributes:
             IsASCIICapable: true
             PrefersRightToLeft: false
-            PrimaryLanguage: en-US
+            PrimaryLanguage: mul
             RequestsOpenAccess: true
   HexUITests:
     type: bundle.ui-testing

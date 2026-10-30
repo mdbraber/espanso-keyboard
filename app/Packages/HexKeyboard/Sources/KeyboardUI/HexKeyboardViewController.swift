@@ -35,6 +35,9 @@ open class HexKeyboardViewController: UIInputViewController {
     private var deleteRepeat: DeleteRepeat?
     private let haptics = KeyHaptics()
     private let sources = Sources()
+    /// The language the corrector was made for, and the English emoji, once loaded (espanso-keyboard).
+    private var language: Language?
+    private var emojiCatalog: EmojiCatalog?
 
     override open func loadView() {
         inputView = KeyboardInputView(frame: .zero, inputViewStyle: .default)
@@ -96,10 +99,12 @@ open class HexKeyboardViewController: UIInputViewController {
             expander?.reset()
             render()
         }
-        engine.corrector = Corrector(source: Lexicon.english, phrases: .english)
+        engine.settings = SettingsStore.load(sharing: hasFullAccess)
+        useLanguage()
         Task { [weak self] in
             let catalog = await Task.detached(priority: .userInitiated) { EmojiCatalog.english }.value
-            self?.engine.emojiCatalog = catalog
+            self?.emojiCatalog = catalog
+            if self?.language == .english { self?.engine.emojiCatalog = catalog }
             self?.engine.suggestionsChanged()
             self?.render()
         }
@@ -127,7 +132,8 @@ open class HexKeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         KeyboardHost.appeared()
         engine.settings = SettingsStore.load(sharing: hasFullAccess)
-        engine.corrector?.memory = MemoryStore.load()
+        useLanguage()
+        engine.corrector?.memory = MemoryStore.load(engine.settings.language)
         engine.emojiHistory = MemoryStore.loadEmoji()
         if hasFullAccess, dictationTokens.isEmpty {
             dictationTokens = [
@@ -162,7 +168,7 @@ open class HexKeyboardViewController: UIInputViewController {
         engine.endSession()
         haptics.stop()
         TouchTrace.shared.flush()
-        if let memory = engine.corrector?.memory { MemoryStore.save(memory, sharing: hasFullAccess) }
+        if let memory = engine.corrector?.memory { MemoryStore.save(memory, language: language ?? .english, sharing: hasFullAccess) }
         MemoryStore.save(engine.emojiHistory)
         dictationTokens.forEach(Dictation.stopObserving)
         dictationTokens = []
@@ -228,7 +234,7 @@ open class HexKeyboardViewController: UIInputViewController {
         let context = engine.layout(on: device, showsGlobe: needsInputModeSwitchKey, isLandscape: screenSize.width > screenSize.height)
         let layout = Layouts.layout(for: context)
         let metrics = KeyboardMetrics.for(device, width: screenSize.width, height: screenSize.height, style: .current, oneHanded: context.oneHanded)
-        keyboardView.menu = (context.menuKey(in: layout), context.menu, context.oneHanded)
+        keyboardView.menu = (context.menuKey(in: layout), context.menu, context.oneHanded, engine.settings.language)
         keyboardView.update(layout: layout, signature: context.signature, metrics: metrics, faces: engine.faces(on: device), theme: theme)
         suggestionBar.maximumSlotWidth = device == .phone ? .infinity : 154.5
         suggestionBar.keyInset = metrics.sideInset
@@ -293,6 +299,8 @@ open class HexKeyboardViewController: UIInputViewController {
             TouchTrace.shared.mark("typed")
         case .oneHanded(let hand), .pick(let hand):
             SettingsStore.set(hand, sharing: hasFullAccess)
+        case .language(let language):
+            SettingsStore.set(language, sharing: hasFullAccess)
         default:
             break
         }
@@ -301,8 +309,33 @@ open class HexKeyboardViewController: UIInputViewController {
         if case .down(let key, _) = event, key.action == .delete, let undo = expander?.backspace() {
             return apply(undo)
         }
-        if engine.handle(event, in: document) { render() }
+        if engine.handle(event, in: document) {
+            useLanguage()
+            render()
+        }
         followEdit(from: before, by: Edit(event))
+    }
+
+    /// Gives the corrector the word list, next words and learned words of the language in the settings, keeping where
+    /// your taps land. Emoji suggestions come from English words, so they're off in other languages (espanso-keyboard).
+    private func useLanguage() {
+        let picked = engine.settings.language
+        guard picked != language else { return }
+        if language != nil { engine.endSession() }
+        let old = engine.corrector
+        if let old, let language { MemoryStore.save(old.memory, language: language, sharing: hasFullAccess) }
+        language = picked
+        let corrector = Corrector(source: Lexicon.for(picked), phrases: .for(picked))
+        corrector.memory = MemoryStore.load(picked)
+        if let old {
+            corrector.memory.touches = old.memory.touches
+            corrector.grid = old.grid
+            corrector.replacements = old.replacements
+        }
+        engine.corrector = corrector
+        engine.emojiCatalog = picked == .english ? emojiCatalog : nil
+        engine.suggestionsChanged()
+        learnReplacements()
     }
 
     /// The key a panel's field gets, for events that would edit the text field.

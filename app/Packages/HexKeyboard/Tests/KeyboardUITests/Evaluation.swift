@@ -16,8 +16,8 @@ struct Evaluation {
         case baseline, decoder, learning
     }
 
-    static func phrases() throws -> [String] {
-        let url = try #require(Bundle.module.url(forResource: "phrases", withExtension: "txt"))
+    static func phrases(_ name: String = "phrases") throws -> [String] {
+        let url = try #require(Bundle.module.url(forResource: name, withExtension: "txt"))
         return try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map { $0.lowercased() }
     }
 
@@ -32,6 +32,35 @@ struct Evaluation {
                     for word in phrase.split(separator: " ") { session.type(String(word), by: &user, tappingSpace: false) }
                 }
                 print("EVAL noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)")
+            }
+        }
+    }
+
+    /// The same in Dutch (espanso-keyboard): Tatoeba sentences, each word tapped without its accents, so a word like
+    /// "ideeën" counts only if autocorrect spells it.
+    @Test func dutch() throws {
+        let phrases = try Self.phrases("phrases-nl")
+        for keyboard in Keyboard.allCases {
+            for noise in Self.noiseLevels {
+                var user = SimulatedUser(width: Self.width, noise: noise, seed: 2026)
+                var session = Session(keyboard, grid: user.grid, language: .dutch)
+                for phrase in phrases {
+                    session.startPhrase()
+                    for word in phrase.split(separator: " ") { session.type(String(word), by: &user, tappingSpace: false) }
+                }
+                print("EVAL nl noise=\(noise) keyboard=\(keyboard.rawValue) \(session.score)")
+            }
+        }
+        for corpus in ["phrases-nl", "chat-nl"] {
+            let url = try #require(Bundle.module.url(forResource: corpus, withExtension: "txt"))
+            let phrases = try String(contentsOf: url, encoding: .utf8).split(separator: "\n")
+            for learning in [false, true] {
+                var prediction = Prediction(language: .dutch)
+                for phrase in phrases {
+                    if !learning { prediction.engine.corrector?.memory = TypingMemory() }
+                    prediction.type(phrase.split(separator: " ").map(String.init))
+                }
+                print("EVAL nl predict corpus=\(corpus) user=\(learning ? "learning" : "new") \(prediction.summary)")
             }
         }
     }
@@ -162,11 +191,11 @@ struct Session {
     var score = Score()
     var window = Score()
 
-    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid) {
+    init(_ keyboard: Evaluation.Keyboard, grid: KeyGrid, language: Language = .english) {
         self.keyboard = keyboard
         self.grid = grid
-        let source: any CandidateSource = keyboard == .baseline ? TextCheckerSource(language: "en-US") : Lexicon.english
-        let corrector = Corrector(source: source, phrases: keyboard == .baseline ? nil : .english)
+        let source: any CandidateSource = keyboard == .baseline ? TextCheckerSource(language: language == .english ? "en-US" : "nl_NL") : Lexicon.for(language)
+        let corrector = Corrector(source: source, phrases: keyboard == .baseline ? nil : .for(language))
         corrector.grid = grid
         engine.corrector = corrector
     }
@@ -184,7 +213,13 @@ struct Session {
         let start = document.text.count
         let predictions = engine.suggestions.map { $0.text.lowercased() }
         var typed = ""
-        for character in word + (tappingSpace ? " " : "") {
+        for character in word.folding(options: .diacriticInsensitive, locale: nil) + (tappingSpace ? " " : "") {
+            // A character off the letters layer ("zo'n") is typed exactly, as from the 123 layer.
+            guard grid.frame(of: String(character)) != nil else {
+                typed.append(character)
+                engine.perform(.character(String(character)), in: document)
+                continue
+            }
             let (x, y) = user.tap(character)
             let hit = keyboard == .baseline ? grid.index(atX: x, y: y) : engine.key(atX: x, y: y, in: grid)
             guard let hit, let label = grid.rows[hit.row][hit.key].key.label, tappingSpace || label != " " else { continue }
@@ -213,8 +248,8 @@ struct Prediction {
     var engine = TypingEngine(traits: InputTraits(autocapitalization: .none))
     var words = 0, first = 0, topThree = 0
 
-    init() {
-        engine.corrector = Corrector(source: Lexicon.english, phrases: .english)
+    init(language: Language = .english) {
+        engine.corrector = Corrector(source: Lexicon.for(language), phrases: .for(language))
     }
 
     mutating func type(_ phrase: [String]) {

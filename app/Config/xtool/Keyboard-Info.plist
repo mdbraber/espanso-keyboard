@@ -16,7 +16,7 @@
 		<dict>
 			<key>IsASCIICapable</key><true/>
 			<key>PrefersRightToLeft</key><false/>
-			<key>PrimaryLanguage</key><string>en-US</string>
+			<key>PrimaryLanguage</key><string>mul</string>
 			<key>RequestsOpenAccess</key><true/>
 		</dict>
 	</dict>

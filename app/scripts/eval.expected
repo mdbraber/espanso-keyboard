@@ -14,7 +14,7 @@ EVAL noise=0.25 keyboard=learning words=2714 raw=88.7% autocorrect=97.1% top3=98
 EVAL noise=0.35 keyboard=baseline words=2714 raw=35.1% autocorrect=59.5% top3=62.8% next3=6.5% fixed=664 broken=1 ["claus→class"]
 EVAL noise=0.35 keyboard=decoder words=2714 raw=60.4% autocorrect=88.6% top3=95.1% next3=22.8% fixed=769 broken=5 ["mice→nice", "prayer→prayed", "see→are", "get→her", "so→do"]
 EVAL noise=0.35 keyboard=learning words=2714 raw=61.1% autocorrect=91.2% top3=96.1% next3=23.5% fixed=822 broken=5 ["worm→work", "user→used", "it→if", "so→do", "merger→meter"]
-EVAL predict corpus=chat user=learning words=7233 top1=16.2% top3=30.3%
+EVAL predict corpus=chat user=learning words=7233 top1=16.2% top3=30.6%
 EVAL predict corpus=chat user=new words=7233 top1=11.0% top3=20.2%
 EVAL predict corpus=phrases user=learning words=2714 top1=12.6% top3=25.1%
 EVAL predict corpus=phrases user=new words=2714 top1=11.8% top3=23.4%
@@ -25,3 +25,19 @@ EVAL thumbs keyboard=decoder total: words=5428 raw=83.3% autocorrect=95.0% top3=
 EVAL thumbs keyboard=learning per 500 words (raw/final): 89.4%/96.4% 88.0%/97.0% 90.4%/97.2% 90.4%/98.0% 90.4%/97.4% 87.8%/97.4% 89.4%/97.2% 90.6%/98.2% 89.2%/97.6% 93.4%/99.0%
 EVAL thumbs keyboard=learning total: words=5428 raw=90.0% autocorrect=97.6% top3=98.5% next3=27.3% fixed=416 broken=4 ["ides→sides", "tire→tore", "like→oke", "ides→sides"]
 EVAL thumbs learned centers: m=(-0.41,+0.10) b=(-0.00,+0.57) o=(-0.44,+0.09) e=(+0.00,+0.09)
+EVAL nl noise=0.0 keyboard=baseline words=2777 raw=99.8% autocorrect=98.1% top3=99.9% next3=9.0% fixed=5 broken=52 ["sami→saai", "tom→tot", "tom→tot", "toms→soms", "sami→saai", "tom→tot", "mary\'s→mary’s", "tom→tot"]
+EVAL nl noise=0.15 keyboard=baseline words=2777 raw=99.1% autocorrect=97.8% top3=99.7% next3=9.0% fixed=16 broken=52 ["sami→saai", "tom→tot", "tom→tot", "toms→soms", "sami→saai", "tom→tot", "mary\'s→mary’s", "tom→tot"]
+EVAL nl noise=0.25 keyboard=baseline words=2777 raw=72.2% autocorrect=86.4% top3=90.1% next3=8.4% fixed=434 broken=39 ["sami→saai", "tom→tot", "tom→tot", "tom→tot", "mary\'s→mary’s", "tom→tot", "tom→tot", "zo\'n→zo’n"]
+EVAL nl noise=0.35 keyboard=baseline words=2777 raw=35.3% autocorrect=56.3% top3=60.1% next3=6.4% fixed=602 broken=20 ["sami→saai", "tom→tot", "tom→tot", "tom→tot", "tom→tot", "tom→tot", "tom→tot", "tom→tot"]
+EVAL nl noise=0.0 keyboard=decoder words=2777 raw=99.8% autocorrect=99.6% top3=100.0% next3=26.9% fixed=6 broken=12 ["wei→wie", "aten→laten", "at→dat", "yanni→yann", "yanni→yann", "ziri→siri", "egyptologe→egyptologie", "honkbalfan→honkbalteam"]
+EVAL nl noise=0.15 keyboard=decoder words=2777 raw=99.3% autocorrect=99.5% top3=100.0% next3=26.9% fixed=17 broken=11 ["wei→wie", "aten→laten", "at→dat", "yanni→yann", "ziri→zei", "egyptologe→egyptologie", "honkbalfan→honkbalteam", "gemakkelijkers→gemakkelijker"]
+EVAL nl noise=0.25 keyboard=decoder words=2777 raw=88.9% autocorrect=97.3% top3=99.0% next3=26.5% fixed=240 broken=8 ["wei→wie", "aten→laten", "yanni→gianni", "naar→jaar", "egyptologe→egyptologie", "vele→veld", "menen→mensen", "methamfetamines→methamfetamine"]
+EVAL nl noise=0.35 keyboard=decoder words=2777 raw=61.3% autocorrect=88.5% top3=94.9% next3=24.8% fixed=760 broken=5 ["wei→wie", "aten→laten", "yanni→gianni", "egyptologe→egyptologie", "menen→mensen"]
+EVAL nl noise=0.0 keyboard=learning words=2777 raw=99.8% autocorrect=99.7% top3=100.0% next3=26.9% fixed=6 broken=7 ["wei→wie", "aten→laten", "at→dat", "egyptologe→egyptologie", "gemakkelijkers→gemakkelijker", "menen→mensen", "methamfetamines→methamfetamine"]
+EVAL nl noise=0.15 keyboard=learning words=2777 raw=99.4% autocorrect=99.4% top3=100.0% next3=26.9% fixed=13 broken=11 ["wei→wie", "aten→laten", "at→dat", "yanni→yann", "yanni→yann", "ziri→zei", "egyptologe→egyptologie", "gemakkelijkers→gemakkelijker"]
+EVAL nl noise=0.25 keyboard=learning words=2777 raw=87.8% autocorrect=97.2% top3=99.0% next3=26.5% fixed=272 broken=9 ["wei→wie", "aten→laten", "esperantisten→separatisten", "at→dat", "yanni→yann", "egyptologe→egyptologie", "honkbalfan→honkbalteam", "menen→mensen"]
+EVAL nl noise=0.35 keyboard=learning words=2777 raw=61.2% autocorrect=90.6% top3=95.3% next3=25.4% fixed=823 broken=8 ["wei→wie", "taal→raak", "aten→laten", "yanni→hanno", "egyptologe→egyptologie", "menen→mensen", "vossen→vissen", "ge→te"]
+EVAL nl predict corpus=phrases-nl user=new words=2777 top1=16.4% top3=26.9%
+EVAL nl predict corpus=phrases-nl user=learning words=2777 top1=15.1% top3=26.8%
+EVAL nl predict corpus=chat-nl user=new words=5561 top1=16.7% top3=28.2%
+EVAL nl predict corpus=chat-nl user=learning words=5561 top1=15.7% top3=28.0%

@@ -6,6 +6,7 @@ final class SettingsViewController: UITableViewController {
     private enum Row {
         case toggle(String, WritableKeyPath<KeyboardSettings, Bool>)
         case oneHanded
+        case language
         case keepMicOn
         case espanso
         case source(Source)
@@ -33,7 +34,8 @@ final class SettingsViewController: UITableViewController {
             .toggle("Smart Punctuation", \.smartPunctuation),
             .toggle("“.” Shortcut", \.periodShortcut),
         ]),
-        Section(title: "English", footer: "Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement.", rows: [
+        Section(title: "Language", footer: Self.languageFooter, rows: [
+            .language,
             .toggle("Predictive Text", \.predictiveText),
         ]),
         Section(title: "Voice", footer: Self.keepMicOnFooter, rows: [.keepMicOn]),
@@ -45,6 +47,8 @@ final class SettingsViewController: UITableViewController {
     private static let keepMicOnFooter = "After you dictate, Hex keeps the mic on this long. While it’s on, the mic beside the suggestions starts and stops dictating without leaving your app; hold it to turn the mic off. Nothing is recorded until you tap it."
 
     private static let sourcesFooter = "With Allow Full Access on, Hex sends each source the text of the field you’re typing in, except passwords and codes, and shows the hints it answers with above the keys. Tap a hint to hide it."
+
+    private static let languageFooter = "Hold 123 to switch between English and Nederlands while you type. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement."
 
     private static let oneHandedFooter = "Hold 123 and slide to move the keys toward one thumb."
 
@@ -102,6 +106,11 @@ final class SettingsViewController: UITableViewController {
             return show(ChoiceViewController(title: "One-Handed Keyboard", footer: "The keys move toward your thumb on an upright iPhone. Tap the arrow beside them to bring back the full keyboard.", choices: choices, choice: settings.oneHanded) {
                 SettingsStore.set($0)
             }, sender: self)
+        case .language:
+            let choices = Language.allCases.map { (value: $0, title: $0.name) }
+            return show(ChoiceViewController(title: "Language", footer: "Autocorrect, suggestions and predictions follow the language. Words Hex learns are kept per language; how you tap is shared.", choices: choices, choice: settings.language) {
+                SettingsStore.set($0)
+            }, sender: self)
         case .keepMicOn:
             let choices = Dictation.micChoices.map { (value: $0, title: Dictation.title(keepingMicOn: $0)) }
             return show(ChoiceViewController(title: "Keep Mic On", footer: Self.keepMicOnFooter, choices: choices, choice: SettingsStore.keepMicOn) {
@@ -142,6 +151,11 @@ final class SettingsViewController: UITableViewController {
         case .oneHanded:
             content.text = "One-Handed Keyboard"
             content.secondaryText = Self.title(of: settings.oneHanded)
+            cell.accessoryView = nil
+            cell.accessoryType = .disclosureIndicator
+        case .language:
+            content.text = "Language"
+            content.secondaryText = settings.language.name
             cell.accessoryView = nil
             cell.accessoryType = .disclosureIndicator
         case .keepMicOn:

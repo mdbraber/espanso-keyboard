@@ -130,11 +130,31 @@
 		</dict>
 		<dict>
 			<key>FooterText</key>
-			<string>Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement.</string>
+			<string>Hold 123 to switch between English and Nederlands while you type. Hex expands your Text Replacements from Settings › General › Keyboard › Text Replacement.</string>
 			<key>Title</key>
-			<string>English</string>
+			<string>Language</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>DefaultValue</key>
+			<string>en</string>
+			<key>Key</key>
+			<string>language</string>
+			<key>Title</key>
+			<string>Language</string>
+			<key>Titles</key>
+			<array>
+				<string>English</string>
+				<string>Nederlands</string>
+			</array>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>Values</key>
+			<array>
+				<string>en</string>
+				<string>nl</string>
+			</array>
 		</dict>
 		<dict>
 			<key>DefaultValue</key>

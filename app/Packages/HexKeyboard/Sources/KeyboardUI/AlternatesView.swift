@@ -1,7 +1,7 @@
 import UIKit
 import KeyboardCore
 
-/// The panel a held key opens, picked by sliding: a key's accents, or the layer key's one-handed layouts.
+/// The panel a held key opens, picked by sliding: a key's accents, or the layer key's one-handed layouts and languages.
 final class AlternatesView: UIView {
     private let panel = UIView()
     private let highlight = UIView()
@@ -34,9 +34,21 @@ final class AlternatesView: UIView {
                 highlightHeight: key.height + 4, over: key, in: area, metrics: metrics, theme: theme)
     }
 
-    func show(symbols: [String], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme) {
+    enum MenuChoice {
+        case symbol(String), text(String)
+    }
+
+    func show(menu choices: [MenuChoice], selected: Int, over key: CGRect, in area: CGRect, metrics: KeyboardMetrics, theme: KeyboardTheme) {
         let configuration = UIImage.SymbolConfiguration(pointSize: metrics.symbolSize, weight: .regular)
-        let images = symbols.map { NSAttributedString(attachment: NSTextAttachment(image: UIImage(systemName: $0, withConfiguration: configuration) ?? UIImage())) }
+        let font = UIFont.systemFont(ofSize: metrics.labelSize, weight: .regular)
+        let images = choices.map { choice in
+            switch choice {
+            case .symbol(let name):
+                NSAttributedString(attachment: NSTextAttachment(image: UIImage(systemName: name, withConfiguration: configuration) ?? UIImage()))
+            case .text(let text):
+                NSAttributedString(string: text, attributes: [.font: font])
+            }
+        }
         let cell = CGSize(width: 50, height: key.height + 18)
         present(images, selected: selected, cell: cell, highlightHeight: key.height + 2, over: key, in: area, metrics: metrics, theme: theme)
     }

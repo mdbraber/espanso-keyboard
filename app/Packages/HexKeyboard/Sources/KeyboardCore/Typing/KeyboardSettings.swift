@@ -9,6 +9,7 @@ public struct KeyboardSettings: Hashable, Sendable {
     public var haptics = true
     public var sound = true
     public var oneHanded = OneHanded.off
+    public var language = Language.english
 
     public init() {}
 }

@@ -149,9 +149,9 @@ struct Decoder {
     /// steady you are, so a tap far from the key it supposedly meant counts for less. `completing` lets the taps cover
     /// only the start of the word.
     static func logLikelihood(of word: String, given taps: [TapEvidence], touches: TouchModel, on grid: KeyGrid, completing: Bool = false) -> Double {
-        let lower = word.lowercased()
-        let letters = Array(lower.utf8).compactMap(Lexicon.index(of:))
-        guard letters.count == lower.utf8.count else { return -.infinity }
+        let folded = Lexicon.letters(word)
+        let letters = folded.compactMap(Lexicon.index(of:))
+        guard letters.count == folded.count else { return -.infinity }
         var total = -Double.infinity
         let start = touches.layout(grid)
         for reading in readings(of: letters, taps: taps.count, completing: completing) {

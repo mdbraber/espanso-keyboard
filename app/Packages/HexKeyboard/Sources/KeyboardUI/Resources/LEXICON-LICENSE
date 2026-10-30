@@ -53,3 +53,35 @@ emoji's keywords, aliases and tags. Both are under the MIT License:
 en.phrases is built by scripts/phrases from the same Google Books Ngram English Fiction release (2-grams and 3-grams,
 books from 1980 on, CC BY 3.0 as above): for each word and pair of words, the words that most often follow them, with
 their counts turned into probabilities.
+
+nl.lexicon and nl.phrases (espanso-keyboard) are built by scripts/lexicon-nl and scripts/phrases-nl from two sources.
+
+Words: OpenTaal's Nederlandse woordenlijst (wordlist.txt, commit b250510), https://github.com/OpenTaal/opentaal-wordlist,
+used under the Revised BSD License (the list is offered under it and/or CC BY 3.0), plus a few everyday words it leaves
+out (scripts/lexicon-nl.py lists them).
+
+  © 2020 OpenTaal (Simon Brouwer, Sander van Geloven), © 2006 - 2011 OpenTaal (Ruud Baars, Simon Brouwer),
+  © 2001 - 2005 Simon Brouwer e.a., © 1996 Nederlandstalige TeX Gebruikersgroep
+
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+  following conditions are met: 1. Redistributions of source code must retain the above copyright notice, this list of
+  conditions and the following disclaimer. 2. Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation and/or other materials provided with the
+  distribution. 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Counts: OPUS OpenSubtitles v2018, Dutch monolingual text, https://opus.nlpl.eu/OpenSubtitles/corpus/version/OpenSubtitles,
+from P. Lison and J. Tiedemann, "OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV Subtitles"
+(LREC 2016), and http://www.opensubtitles.org/. OPUS publishes it without a licence of its own; nl.lexicon and nl.phrases
+hold only counts derived from it (per word, and the likeliest next words after each word and pair of words).
+
+The Dutch test sentences (Tests/KeyboardUITests/phrases-nl.txt and chat-nl.txt, picked by scripts/tatoeba-nl.py) are
+from Tatoeba, https://tatoeba.org, CC BY 2.0 FR, https://creativecommons.org/licenses/by/2.0/fr/.

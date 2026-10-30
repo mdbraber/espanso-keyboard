@@ -47,13 +47,13 @@ struct LanguageModel {
 
     func lexical(_ word: String) -> Double {
         let known = lexicon.logProbability(of: word).map(Math.exp) ?? 0
-        return (1 - novelty) * known + novelty * Math.exp(Self.spellingLogProbability * Double(word.utf8.count + 1))
+        return (1 - novelty) * known + novelty * Math.exp(Self.spellingLogProbability * Double(Lexicon.letters(word).count + 1))
     }
 
     /// P(next letter | the letters so far), over the lexicon and novel spellings, and P(the word ends here) as `" "`.
     /// Before a word starts, `" "` is how often you type a second space, by the rule of succession.
     func next(after prefix: String) -> [String: Double] {
-        let length = Double(prefix.utf8.count)
+        let length = Double(Lexicon.letters(prefix).count)
         let node = lexicon.node(for: prefix)
         let novel = { (letters: Double) in novelty * Math.exp(Self.spellingLogProbability * letters) }
         let mass = { (node: Lexicon.Node?) in node.map { (1 - novelty) * Math.exp(lexicon.logMass($0)) } ?? 0 }
